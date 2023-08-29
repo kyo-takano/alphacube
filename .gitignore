@@ -1,0 +1,36 @@
+# Compiled Python files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+env/
+
+# Development and local settings
+*.env
+*.env.local
+*.env.*.local
+*.sqlite3
+
+# Editor and temporary files
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+
+# Large files
+*.zip
+*.pth
+*.tar.gz
+
+# Packaging
+dist/
+build/
+eggs/
+*.egg-info/
+*.egg
