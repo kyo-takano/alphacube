@@ -16,6 +16,7 @@ Example::
     solution = alphacube.solve(format='moves', scramble="R U R' U'", beam_width=1024)
 
 """
+
 import logging
 from rich.console import Console
 from rich.logging import RichHandler
@@ -25,6 +26,7 @@ logger.propagate = False
 logger.addHandler(RichHandler(console=Console(stderr=True)))
 logger.setLevel(logging.WARNING)
 logargs = dict(extra={"markup": True})
+
 
 # Set up logging level
 def set_verbose(loglevel=logging.INFO):
@@ -39,11 +41,13 @@ def set_verbose(loglevel=logging.INFO):
     """
     global logger
     logger.setLevel(loglevel)
-    
+
+
 from ._validator import Input
 from .solver import Solver
 
 _solver = Solver()
+
 
 def load(*args, **kwargs):
     """
@@ -57,6 +61,7 @@ def load(*args, **kwargs):
     """
     _solver.load(*args, **kwargs)
 
+
 def solve(*args, **kwargs):
     """
     Solve a Rubik's Cube puzzle using the loaded solver model.
@@ -68,9 +73,12 @@ def solve(*args, **kwargs):
         dict | None: A dictionary containing solutions and performance metrics. None if failed.
     """
     if _solver.model is None:
-        raise ValueError('Model not loaded. Call `load` with appropriate arguments first.')
+        raise ValueError(
+            "Model not loaded. Call `load` with appropriate arguments first."
+        )
 
     return _solver(*args, **kwargs)
+
 
 # CLI Option
 def cli():
@@ -120,13 +128,52 @@ def cli():
     from rich import print
 
     import argparse
-    parser = argparse.ArgumentParser(description="AlphaCube -- State-of-the-Art Rubik's Cube Solver")
-    parser.add_argument("--model_id", "-m", type=str, default="small", help="ID of the model to solve a given scramble with (`small`, `base`, or `large`)")
-    parser.add_argument("--format", "-f", type=str, default="moves", help="Format of the input scramble (`moves` or `stickers`)")
-    parser.add_argument("--scramble", "-s", type=str, help="Sequence of scramble in HTM (including wide moves) or dictionary of sticker indices by face.")
-    parser.add_argument("--beam_width", "-bw", type=int, default=1024, help="Beam width, the parameter strongly correlated with solution optimality and computation time")
-    parser.add_argument("--extra_depths", "-ex", type=int, default=0, help="Number of additional depths to explore during the search")
-    parser.add_argument('--verbose', '-v', dest="loglevel", action="store_const", const=logging.INFO, help="Enable verbose output for tracking progress")
+
+    parser = argparse.ArgumentParser(
+        description="AlphaCube -- State-of-the-Art Rubik's Cube Solver"
+    )
+    parser.add_argument(
+        "--model_id",
+        "-m",
+        type=str,
+        default="small",
+        help="ID of the model to solve a given scramble with (`small`, `base`, or `large`)",
+    )
+    parser.add_argument(
+        "--format",
+        "-f",
+        type=str,
+        default="moves",
+        help="Format of the input scramble (`moves` or `stickers`)",
+    )
+    parser.add_argument(
+        "--scramble",
+        "-s",
+        type=str,
+        help="Sequence of scramble in HTM (including wide moves) or dictionary of sticker indices by face.",
+    )
+    parser.add_argument(
+        "--beam_width",
+        "-bw",
+        type=int,
+        default=1024,
+        help="Beam width, the parameter strongly correlated with solution optimality and computation time",
+    )
+    parser.add_argument(
+        "--extra_depths",
+        "-ex",
+        type=int,
+        default=0,
+        help="Number of additional depths to explore during the search",
+    )
+    parser.add_argument(
+        "--verbose",
+        "-v",
+        dest="loglevel",
+        action="store_const",
+        const=logging.INFO,
+        help="Enable verbose output for tracking progress",
+    )
     args = parser.parse_args()
 
     if args.loglevel:
@@ -134,19 +181,19 @@ def cli():
 
     # Manual validation
     model_id = args.model_id
-    assert model_id in ["small", "base","large"], "Model ID must be either 'base' or 'large'"
+    assert model_id in ["small", "base", "large"], "Model ID must be either 'base' or 'large'"
 
     logger.info(args)
-    
+
     # Pydantic validation
     args = Input(
         format=args.format,
         scramble=args.scramble,
         beam_width=args.beam_width,
         extra_depths=args.extra_depths,
-        ergonomic_bias=None
+        ergonomic_bias=None,
     )
-        
+
     # Load only once validated
     _solver.load(model_id=model_id)
     # Solve
@@ -154,8 +201,9 @@ def cli():
         format=args.format,
         scramble=args.scramble,
         beam_width=args.beam_width,
-        extra_depths=args.extra_depths
+        extra_depths=args.extra_depths,
     )
     print(solutions)
 
-__all__ = ['load', 'solve', "cli"]
+
+__all__ = ["load", "solve", "cli"]

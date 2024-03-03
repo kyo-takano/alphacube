@@ -10,7 +10,7 @@ Class:
 Example::
 
     from alphacube.solver import Solver
-    solver = Solver() # Assigned to `alphacube._solver` at the package level. 
+    solver = Solver() # Assigned to `alphacube._solver` at the package level.
     solver.load()
     solution = solver(format='moves', scramble="R U R' U'", beam_width=1024)
 
@@ -32,10 +32,10 @@ class Solver:
     - ``__call__``: Set up the cube state and pass it for solution using beam search.
     """
     def load(
-        self, 
-        prefer_gpu=True, 
-        quantize_on_cpu=True, 
-        jit_mode=False, 
+        self,
+        prefer_gpu=True,
+        quantize_on_cpu=True,
+        jit_mode=False,
         *args, **kwargs
     ):
         """
@@ -57,16 +57,16 @@ class Solver:
             logger.info(f"[grey50]Running on {DEVICE.upper()}", **logargs)
             self.model.to(DEVICE)
         else:
-            logger.info(f"[grey50]Running on CPU (no GPU found)", **logargs)
+            logger.info("[grey50]Running on CPU (no GPU found)", **logargs)
             if quantize_on_cpu:
-                logger.info(f"[grey50]Quantizing the model -- roughly 3x faster [italic]on CPU", **logargs)
+                logger.info("[grey50]Quantizing the model -- roughly 3x faster [italic]on CPU", **logargs)
                 self.model = torch.ao.quantization.quantize_dynamic(self.model, {torch.nn.Linear}, dtype=torch.qint8)
 
         if jit_mode:
-            logger.info(f"[grey50]JIT-mode enabled -- [italic]potentially[/italic] faster than eager execution", **logargs)
+            logger.info("[grey50]JIT-mode enabled -- [italic]potentially[/italic] faster than eager execution", **logargs)
             self.model = torch.jit.script(self.model)
 
-        logger.info(f"[cyan]Initialized AlphaCube solver.", **logargs)
+        logger.info("[cyan]Initialized AlphaCube solver.", **logargs)
 
 
     def __call__(self, scramble, format="moves", allow_wide=True, **kwargs):

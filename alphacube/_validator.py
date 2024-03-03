@@ -22,7 +22,7 @@ Usage Example::
     }
     validated_input = Input(**input_data)
 
-Note: 
+Note:
 
     The ergonomic bias information is optional and not strictly validated.
 
@@ -33,18 +33,23 @@ from typing import Optional
 import json
 import re
 
+
 class Input(BaseModel):
     """
     Input validator (& preprocessor) for AlphaCube.
     """
 
-    format: str                     # The format of the input data. Must be either 'moves' or 'stickers'.
-    scramble: list                  # The scramble data in the specified format.
-    beam_width: int                 # The beam width for the task. Must be a positive integer.
-    extra_depths: int               # The number of extra depths for the task. Must be a non-negative integer.
-    ergonomic_bias: Optional[dict]  # Optional ergonomic bias information (not strictly validated).
+    format: str  # The format of the input data. Must be either 'moves' or 'stickers'.
+    scramble: list  # The scramble data in the specified format.
+    beam_width: int  # The beam width for the task. Must be a positive integer.
+    extra_depths: (
+        int  # The number of extra depths for the task. Must be a non-negative integer.
+    )
+    ergonomic_bias: Optional[
+        dict
+    ]  # Optional ergonomic bias information (not strictly validated).
 
-    @validator('format')
+    @validator("format")
     @classmethod
     def validate_format(cls, value: str) -> str:
         """
@@ -60,7 +65,9 @@ class Input(BaseModel):
             ValueError: If the format is not 'moves' or 'stickers'.
         """
         if value not in ["moves", "stickers"]:
-            raise ValueError("Invalid input format. Must be either 'moves' or 'stickers'.")
+            raise ValueError(
+                "Invalid input format. Must be either 'moves' or 'stickers'."
+            )
         return value
 
     @validator("beam_width")
@@ -101,7 +108,7 @@ class Input(BaseModel):
             raise ValueError("Extra depths must be a non-negative integer.")
         return value
 
-    @model_validator(mode='before')
+    @model_validator(mode="before")
     @classmethod
     def validate_scramble(cls, values):
         """
@@ -117,7 +124,7 @@ class Input(BaseModel):
             ValueError: If there are invalid moves in 'scramble' for 'moves' format.
             ValueError: If unexpected center-piece configuration in 'scramble' for 'stickers' format (not implemented).
 
-        Todo: 
+        Todo:
             Also check for potential orientation, permutation, parity
         """
 
@@ -128,18 +135,22 @@ class Input(BaseModel):
             if isinstance(scramble, str):
                 scramble = scramble.split()
             scramble = [m.replace("2'", "2") for m in scramble]
-            invalid_moves = [m for m in scramble if not re.match(r"^[UDLRFBudlrfb'2]{1,2}$", m)]  # no wide moves -- yet
+            invalid_moves = [
+                m for m in scramble if not re.match(r"^[UDLRFBudlrfb'2]{1,2}$", m)
+            ]  # no wide moves -- yet
             if invalid_moves:
-                raise ValueError(f"Invalid move{'s' if len(invalid_moves) > 1 else ''} in `scramble`: {invalid_moves}")
+                raise ValueError(
+                    f"Invalid move{'s' if len(invalid_moves) > 1 else ''} in `scramble`: {invalid_moves}"
+                )
         elif format == "stickers":
             if isinstance(scramble, str):
                 scramble = json.loads(scramble.replace("\\\n", ""))
-            if isinstance(scramble, dict): 
+            if isinstance(scramble, dict):
                 sticker_colors = [scramble[face] for face in "UDLRBF"]
                 # Reset axes if centers are modified
                 center_indices = [stickers[4] for stickers in sticker_colors]
                 if sorted(center_indices) != list(range(6)):
-                    raise ValueError('Unexpected center-piece configuration.')
+                    raise ValueError("Unexpected center-piece configuration.")
                 # Deconstruct a dict of lists to a flat list
                 scramble = sum(sticker_colors, [])
 

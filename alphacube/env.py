@@ -71,6 +71,7 @@ class Cube3:
         sticker_source_ix_wide (ndarray): A 2D numpy array mapping move indices to source sticker indices for wide moves.
 
     """
+
     def __init__(self, allow_wide=True, max_depth=20):
         self.allow_wide = allow_wide
 
@@ -81,28 +82,32 @@ class Cube3:
         # Define moves
         faces = ["U", "D", "L", "R", "B", "F"]
         if self.allow_wide:
-            faces += ['d', 'u', 'r', 'l', 'f', 'b'] # Essentially the same as above
-        degrees           = ["", "'", "2"]
-        degrees_inference = ["'", "", "2"] # inverse
+            faces += ["d", "u", "r", "l", "f", "b"]  # Essentially the same as above
+        degrees = ["", "'", "2"]
+        degrees_inference = ["'", "", "2"]  # inverse
 
         # List of moves in HTM notation (e.g., R', U, F2)
-        self.moves = [f+n for f in faces for n in degrees]
+        self.moves = [f + n for f in faces for n in degrees]
         # List mapping the indices of predicted last *training* moves to their inverse for inference.
         # e.g., 0 -> 1, 1 -> 0, 2 -> 2
-        self.moves_ix_inference = [self.moves.index(f+n) for f in faces for n in degrees_inference]
+        self.moves_ix_inference = [
+            self.moves.index(f + n) for f in faces for n in degrees_inference
+        ]
 
         # Vectorize the sticker group replacement operations
         self.__vectorize_moves()
 
         # Utilities for wide move postprocessing
-        self.CENTER_INDICES  = [4, 13, 22, 31, 40, 49]
+        self.CENTER_INDICES = [4, 13, 22, 31, 40, 49]
         self.CENTERS_HAT = np.arange(0, 6, dtype=np.int64)
 
         """ For potential training with `__iter__` """
         self.max_depth = max_depth
-        self.moves_ix = [self.moves.index(f+n) for f in faces for n in degrees]
+        self.moves_ix = [self.moves.index(f + n) for f in faces for n in degrees]
 
-    def show(self, flat=False, palette=["white", "yellow", "orange1", "red", "blue", "green"]):
+    def show(
+        self, flat=False, palette=["white", "yellow", "orange1", "red", "blue", "green"]
+    ):
         """
         Display the cube's current state.
 
@@ -110,16 +115,17 @@ class Cube3:
             flat (bool): Whether to display the state in flat form.
             palette (list): List of colors for representing stickers.
         """
-        palette=["white", 'black', "blue", "red", "pink1", "green"]
+        palette = ["white", "black", "blue", "red", "pink1", "green"]
         state_by_face = self.state.reshape(6, 9)
         if not flat:
-            state_by_face = state_by_face[:, [2, 5, 8, 1, 4, 7, 0, 3, 6]].reshape(6, 3, 3)
+            state_by_face = state_by_face[:, [2, 5, 8, 1, 4, 7, 0, 3, 6]].reshape(
+                6, 3, 3
+            )
         state_by_face = str(state_by_face)
         for i, color in zip(range(6), palette):
             state_by_face = state_by_face.replace(str(i), f"[{color}]{i}[/{color}]")
         print(state_by_face)
         print()
-
 
     def validate(self, centered=True):
         """
@@ -135,10 +141,10 @@ class Cube3:
 
         if centered and not np.all(centers == self.CENTERS_HAT):
             # Must be [0, 1, 2, 3, 4, 5]
-            raise ValueError('State is not *centered*.')
+            raise ValueError("State is not *centered*.")
         if not centered and np.all(centers == self.CENTERS_HAT):
             # Must NOT be [0, 1, 2, 3, 4, 5]
-            raise ValueError('State is unintendedly *centered*.')
+            raise ValueError("State is unintendedly *centered*.")
 
         if not np.all(np.sort(centers) == self.CENTERS_HAT):
             # Must be [0, 1, 2, 3, 4, 5] when sorted
@@ -151,7 +157,6 @@ class Cube3:
     def reset(self):
         """Resets the cube state to the solved state."""
         self.state = np.arange(0, 6 * 9, dtype=np.int64) // 9
-
 
     def reset_axes(self):
         """
@@ -166,11 +171,9 @@ class Cube3:
             self.state = mapping[self.state]
             assert self.state.shape == (54,)
 
-
     def is_solved(self):
         """Checks if the cube is in the solved state."""
         return np.all(self.state == self.GOAL)
-
 
     def finger(self, move):
         """
@@ -189,10 +192,13 @@ class Cube3:
             ix (int): Index of the move.
         """
         if ix < 18:
-            self.state[self.sticker_target_ix[ix]] = self.state[self.sticker_source_ix[ix]]
+            self.state[self.sticker_target_ix[ix]] = self.state[
+                self.sticker_source_ix[ix]
+            ]
         else:
-            self.state[self.sticker_target_ix_wide[ix % 18]] = self.state[self.sticker_source_ix_wide[ix % 18]]
-
+            self.state[self.sticker_target_ix_wide[ix % 18]] = self.state[
+                self.sticker_source_ix_wide[ix % 18]
+            ]
 
     def apply_scramble(self, scramble):
         """
@@ -205,7 +211,6 @@ class Cube3:
             scramble = scramble.split()
         for m in scramble:
             self.finger(m)
-
 
     def __iter__(self):
         assert not self.allow_wide
@@ -223,7 +228,9 @@ class Cube3:
                         if ix // 3 == seq[-1] // 3:
                             continue
                         # Skip two moves on a same face with an opposite move in between
-                        if _ > 1 and (ix // 3 == seq[-2] // 3 and ix // 6 == seq[-1] // 6):
+                        if _ > 1 and (
+                            ix // 3 == seq[-2] // 3 and ix // 6 == seq[-1] // 6
+                        ):
                             continue
                         break
                 else:
@@ -234,7 +241,6 @@ class Cube3:
                 X[_, :] = self.state
                 y.append(ix)
             yield X, np.array(y, dtype=int)
-
 
     def __vectorize_moves(self):
         """
@@ -295,12 +301,20 @@ class Cube3:
 
         # For index slicing
         # Normal moves
-        self.sticker_target_ix = np.array([np.array(self.sticker_target[m]) for m in self.moves[:18]])
-        self.sticker_source_ix = np.array([np.array(self.sticker_source[m]) for m in self.moves[:18]])
+        self.sticker_target_ix = np.array(
+            [np.array(self.sticker_target[m]) for m in self.moves[:18]]
+        )
+        self.sticker_source_ix = np.array(
+            [np.array(self.sticker_source[m]) for m in self.moves[:18]]
+        )
         # Wide moves
         if self.allow_wide:
-            self.sticker_target_ix_wide = np.array([np.array(self.sticker_target[m]) for m in self.moves[18:]])
-            self.sticker_source_ix_wide = np.array([np.array(self.sticker_source[m]) for m in self.moves[18:]])
+            self.sticker_target_ix_wide = np.array(
+                [np.array(self.sticker_target[m]) for m in self.moves[18:]]
+            )
+            self.sticker_source_ix_wide = np.array(
+                [np.array(self.sticker_source[m]) for m in self.moves[18:]]
+            )
 
 
 class Dataset(torch.utils.data.Dataset):
@@ -314,12 +328,16 @@ class Dataset(torch.utils.data.Dataset):
     >>>     # One-hot encoding & batching
     >>>     batch_x, batch_y = F.one_hot(batch_x).reshape(-1, 324), batch_y.reshape(-1)
     """
+
     def __init__(self, max_depth=20, num_workers=os.cpu_count()):
         self.num_workers = num_workers
-        self.generators = [iter(Cube3(allow_wide=False, max_depth=max_depth)) for _ in range(num_workers)]
+        self.generators = [
+            iter(Cube3(allow_wide=False, max_depth=max_depth))
+            for _ in range(num_workers)
+        ]
 
     def __len__(self):
         return 0x7FFFFFFF  # max int possible with a single precision
 
     def __getitem__(self, i):
-        return next(self.generators[i %self.num_workers])
+        return next(self.generators[i % self.num_workers])
