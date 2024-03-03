@@ -319,14 +319,13 @@ class Cube3:
 
 class Dataset(torch.utils.data.Dataset):
     """
-    Pseudo dataset class to
+    Pseudo dataset class to infinitely yield random scrambles
 
     **Example**:
     >>> batch_size = 1024
-    >>> dl = torch.utils.data.DataLoader(Dataset(), num_workers=os.cpu_count(), batch_size=batch_size)
+    >>> dl = get_dataloader(batch_size)
     >>> for i, (batch_x, batch_y) in zip(range(1000), dl):
-    >>>     # One-hot encoding & batching
-    >>>     batch_x, batch_y = F.one_hot(batch_x).reshape(-1, 324), batch_y.reshape(-1)
+    >>>     batch_x, batch_y = batch_x.to(device), batch_y.reshape(-1)
     """
 
     def __init__(self, max_depth=20, num_workers=os.cpu_count()):
@@ -341,3 +340,8 @@ class Dataset(torch.utils.data.Dataset):
 
     def __getitem__(self, i):
         return next(self.generators[i % self.num_workers])
+
+
+def get_dataloader(batch_size, num_workers=os.cpu_count(), max_depth=20):
+    ds = Dataset(max_depth=max_depth, num_workers=num_workers)
+    return torch.utils.data.DataLoader(ds, num_workers=num_workers, batch_size=batch_size)

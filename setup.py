@@ -5,7 +5,7 @@ with open('README.md', 'r') as f:
 
 setup(
     name="alphacube",
-    version="0.1.0",
+    version="0.1.1",
     description="A powerful & flexible Rubik's Cube solver",
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -15,10 +15,10 @@ setup(
     python_requires=">= 3.6",
     packages=["alphacube"],
     install_requires=[
-        "torch>=2.0.1", 
-        "numpy>=1.23.3", 
-        "rich>=13.0.1", 
-        "pydantic>=2.0.3", 
+        "torch>=2.0.1",
+        "numpy>=1.23.3",
+        "rich>=13.0.1",
+        "pydantic>=2.0.3",
         "requests>=2.28.2"
     ],
     entry_points={
