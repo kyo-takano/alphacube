@@ -14,15 +14,17 @@ Example::
     solver.load()
     solution = solver(format='moves', scramble="R U R' U'", beam_width=1024)
 
-    """
+"""
 
 import torch
-from . import logger, logargs
+
+from . import logargs, logger
 from .env import Cube3
-from .search import beam_search
 from .model import load_model
+from .search import beam_search
 
 DEVICE = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
+
 
 class Solver:
     """
@@ -31,17 +33,13 @@ class Solver:
     - ``load``: Load the solver model and optimize it for CPU or GPU.
     - ``__call__``: Set up the cube state and pass it for solution using beam search.
     """
-    def load(
-        self,
-        prefer_gpu=True,
-        quantize_on_cpu=True,
-        jit_mode=False,
-        *args, **kwargs
-    ):
+
+    def load(self, model_id, prefer_gpu=True, quantize_on_cpu=True, jit_mode=False, *args, **kwargs):
         """
         Load the Rubik's Cube solver model and optimize it for CPU or GPU.
 
         Args:
+            model_id (str): Identifier for the model variant to load ("small", "base", or "large").
             prefer_gpu (bool): Whether to prefer GPU if available.
             quantize_on_cpu (bool): Whether to quantize the model for CPU optimization.
             jit_mode (bool): Whether to enable JIT mode for potentially faster execution.
@@ -52,7 +50,7 @@ class Solver:
             None
         """
         # Load the model (download if not yet)
-        self.model = load_model(*args, **kwargs)
+        self.model = load_model(model_id, *args, **kwargs)
         if prefer_gpu and DEVICE != "cpu":
             logger.info(f"[grey50]Running on {DEVICE.upper()}", **logargs)
             self.model.to(DEVICE)
@@ -63,11 +61,12 @@ class Solver:
                 self.model = torch.ao.quantization.quantize_dynamic(self.model, {torch.nn.Linear}, dtype=torch.qint8)
 
         if jit_mode:
-            logger.info("[grey50]JIT-mode enabled -- [italic]potentially[/italic] faster than eager execution", **logargs)
+            logger.info(
+                "[grey50]JIT-mode enabled -- [italic]potentially[/italic] faster than eager execution", **logargs
+            )
             self.model = torch.jit.script(self.model)
 
         logger.info("[cyan]Initialized AlphaCube solver.", **logargs)
-
 
     def __call__(self, scramble, format="moves", allow_wide=True, **kwargs):
         """

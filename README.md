@@ -25,7 +25,7 @@ Using AlphaCube in Python is as simple as this:
 import alphacube
 
 # Load a trained DNN
-alphacube.load(model_id="small") # the default model
+alphacube.load("small") # the default model
 
 # Solve the cube using a given scramble
 result = alphacube.solve(
@@ -46,7 +46,7 @@ print(result)
 > }
 > ```
 
-AlphaCube selects the smallest model by default and takes about a few seconds to find moderately good solution(s).
+AlphaCube selects the smallest model by default and takes about a few seconds to find a moderately good solution.
 
 ### Better Solutions
 
@@ -119,7 +119,7 @@ print(result)
 If you have a GPU, we highly recommend you select the largest model for the best possible performance:
 
 ```python
-alphacube.load(model_id="large")
+alphacube.load("large")
 result = alphacube.solve(
     scramble="D U F2 L2 U' B2 F2 D L2 U R' F' D R' F' U L D' F' D R2",
     beam_width=65536,
@@ -151,7 +151,7 @@ Please refer to our [documentation](https://alphacube.dev/docs) for more, especi
 At the heart of AlphaCube lies a methodology rooted in the paper titled ["Self-Supervision is All You Need for Solving Rubik's Cube" (TMLR'23)](https://openreview.net/forum?id=bnBeNFB27b), the official code of which is also available as a [GitHub repository](https://github.com/kyo-takano/efficientcube).
 This project releases the three largest solvers trained in Half-Turn Metric (HTM) as described in **Section 7. Scaling Law**.
 
-In EfficientCube, a Deep Neural Network (DNN) is trained to predict the **probability distribution of the next moves** that would bring a given state one step closer to the goal. 
+In EfficientCube, a Deep Neural Network (DNN) is trained to predict the **probability distribution of the next moves** that would bring a given state one step closer to the goal.
 These predicted moves are then applied sequentially to solve a given scramble.
 
 This project releases the three largest, compute-optimally trained solvers as described in **Section 7. Scaling Law**.

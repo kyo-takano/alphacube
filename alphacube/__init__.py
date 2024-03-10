@@ -49,17 +49,18 @@ from .solver import Solver
 _solver = Solver()
 
 
-def load(*args, **kwargs):
+def load(model_id="small", *args, **kwargs):
     """
     Load the Rubik's Cube solver model.
 
     Args:
+        model_id (str): Identifier for the model variant to load ("small", "base", or "large"). Default to `small`.
         *args, **kwargs: Arguments to configure model loading.
 
     Returns:
         None
     """
-    _solver.load(*args, **kwargs)
+    _solver.load(model_id, *args, **kwargs)
 
 
 def solve(*args, **kwargs):
@@ -73,9 +74,7 @@ def solve(*args, **kwargs):
         dict | None: A dictionary containing solutions and performance metrics. None if failed.
     """
     if _solver.model is None:
-        raise ValueError(
-            "Model not loaded. Call `load` with appropriate arguments first."
-        )
+        raise ValueError("Model not loaded. Call `load` with appropriate arguments first.")
 
     return _solver(*args, **kwargs)
 
@@ -129,9 +128,7 @@ def cli():
 
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="AlphaCube -- State-of-the-Art Rubik's Cube Solver"
-    )
+    parser = argparse.ArgumentParser(description="AlphaCube -- State-of-the-Art Rubik's Cube Solver")
     parser.add_argument(
         "--model_id",
         "-m",
@@ -195,7 +192,7 @@ def cli():
     )
 
     # Load only once validated
-    _solver.load(model_id=model_id)
+    _solver.load(model_id)
     # Solve
     solutions = _solver(
         format=args.format,

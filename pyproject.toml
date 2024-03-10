@@ -37,3 +37,6 @@ classifiers = [
 
 [project.scripts]
 alphacube = "alphacube:cli"
+
+[tool.ruff]
+line-length = 120

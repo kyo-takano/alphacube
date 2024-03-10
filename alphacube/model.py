@@ -12,10 +12,12 @@ Classes:
 """
 
 import os
+
 import torch
-from torch import nn
 import torch.nn.functional as F
-from . import logger, logargs
+from torch import nn
+
+from . import logargs, logger
 
 
 def load_model(
@@ -38,12 +40,8 @@ def load_model(
         from rich.progress import Progress
 
         os.makedirs(cache_dir, exist_ok=True)
-        model_url = os.path.join(
-            "https://storage.googleapis.com/alphacube/", model_id + ".zip"
-        )
-        logger.info(
-            f"[grey50]Downloading AlphaCube ({model_id}) from {model_url}", **logargs
-        )
+        model_url = os.path.join("https://storage.googleapis.com/alphacube/", model_id + ".zip")
+        logger.info(f"[grey50]Downloading AlphaCube ({model_id}) from {model_url}", **logargs)
         with requests.get(model_url, stream=True) as r:
             total_size = int(r.headers.get("Content-Length"))
             with Progress() as progress:
@@ -61,15 +59,24 @@ def load_model(
                 f"The model file appears to be broken, most likely because of permission error (deleted):\n{e}"
             )
     else:
-        logger.info(
-            f"[grey50]Loading AlphaCube solver from cache at {model_path}", **logargs
-        )
+        logger.info(f"[grey50]Loading AlphaCube solver from cache at {model_path}", **logargs)
         state_dict = torch.load(model_path, map_location=torch.device("cpu"))
 
-    embed_dim, num_layers = {"small": (1024, 7), "base": (2048, 8), "large": (4096, 8)}[
-        model_id
-    ]
-    model = Model_v1(embed_dim, num_layers)
+    if model_id in ["small", "base", "large"]:
+        module = Model_v1
+        embed_dim, num_layers = {
+            "small": (1024, 7),
+            "base": (2048, 8),
+            "large": (4096, 8),
+        }[model_id]
+    else:
+        module = Model
+        embed_dim, num_layers = (
+            state_dict["layers.0.fc.weight"].shape[0],
+            sum(1 for k in state_dict.keys() if k.endswith(".fc.weight")),
+        )
+
+    model = module(embed_dim, num_layers)
     model.load_state_dict(state_dict)
     return model
 
@@ -80,9 +87,7 @@ class Model_v1(nn.Module):
     https://openreview.net/forum?id=bnBeNFB27b
     """
 
-    def __init__(
-        self, embed_dim=4096, num_hidden_layers=8, input_dim=324, output_dim=18
-    ):
+    def __init__(self, embed_dim=4096, num_hidden_layers=8, input_dim=324, output_dim=18):
         super(Model_v1, self).__init__()
         self.layers = nn.ModuleList(
             [LinearBlock(input_dim, embed_dim)]
@@ -116,14 +121,10 @@ class Model(nn.Module):
     - Following the recent convention, the `embedding` layer does *not* count as one hidden layer.
     """
 
-    def __init__(
-        self, hidden_size=4096, num_hidden_layers=8, input_dim=324, output_dim=18
-    ):
+    def __init__(self, hidden_size=4096, num_hidden_layers=8, input_dim=324, output_dim=18):
         super(Model, self).__init__()
         self.embedding = nn.Linear(input_dim, hidden_size, bias=False)
-        self.layers = nn.ModuleList(
-            [LinearBlock(hidden_size, hidden_size) for i in range(num_hidden_layers)]
-        )
+        self.layers = nn.ModuleList([LinearBlock(hidden_size, hidden_size) for i in range(num_hidden_layers)])
         self.head = nn.Linear(hidden_size, output_dim, bias=False)
 
     def forward(self, inputs):
