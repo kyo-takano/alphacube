@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "alphacube"
-version = "0.1.1"
+version = "0.1.2"
 description = "A powerful & flexible Rubik's Cube solver"
 readme = "README.md"  # Tell pip how to find the readme
 requires-python = ">=3.6"
