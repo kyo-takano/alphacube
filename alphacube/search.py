@@ -8,23 +8,16 @@ Function:
 """
 
 import time
-from rich import print
-from . import logger
-import torch
-import numpy as np
 from contextlib import nullcontext
-import warnings
 
-warnings.filterwarnings("ignore")
+import numpy as np
+import torch
+from rich import print
 
-DEVICE = (
-    "cuda"
-    if torch.cuda.is_available()
-    else "mps"
-    if torch.backends.mps.is_available()
-    else "cpu"
-)
-MAX_BATCH_SIZE = 2**16  # The maximum number of states processed by DNN at a time.
+from . import logger
+
+DEVICE = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
+MAX_BATCH_SIZE = 2 ** 16  # The maximum number of states forward-pass through a DNN at a time.
 
 
 @torch.no_grad()
@@ -76,13 +69,9 @@ def beam_search(
     # Initialize ergonomic bias if provided
     if ergonomic_bias is not None:
         # Zero-fill N/A and normalize to 1.
-        ergonomic_bias = np.array(
-            [ergonomic_bias.get(m, 0) for m in env.moves], dtype=np.half
-        ).reshape(1, -1)
+        ergonomic_bias = np.array([ergonomic_bias.get(m, 0) for m in env.moves], dtype=np.half).reshape(1, -1)
         if np.all(ergonomic_bias[:, 18:] == 0):
-            logger.info(
-                "All wide moves (e.g., r2, f2) seem to be 0 ── starting to solve only with flat moves..."
-            )
+            logger.info("All wide moves (e.g., r2, f2) seem to be 0 ── starting to solve only with flat moves...")
             # If wide moves are disabled, switch to flat-move mode
             env.allow_wide = False
             env.moves_ix_inference = env.moves_ix_inference[:18]
@@ -96,21 +85,13 @@ def beam_search(
         env.moves_ix_inference = env.moves_ix_inference[:18]
 
     # Context: Use mixed precision training if GPU is available
-    ctx = (
-        torch.autocast(DEVICE, dtype=torch.float16)
-        if torch.cuda.is_available()
-        else nullcontext()
-    )
+    ctx = torch.autocast(DEVICE, dtype=torch.float16) if DEVICE != 'cpu' else nullcontext()
 
     # Initialize candidate paths and their corresponding states and estimated probabilities
     candidates = {
-        "cumprod": np.array(
-            [1.0], dtype=np.half
-        ),  # Cumulative probability of candidate paths
+        "cumprod": np.array([1.0], dtype=np.half),  # Cumulative probability of candidate paths
         "state": env.state[None, :],  # Current state
-        "path": np.array(
-            [[]], dtype=np.byte
-        ),  # Sequence of move indices constituting each path
+        "path": np.array([[]], dtype=np.byte),  # Sequence of move indices constituting each path
     }
     solutions = {"solutions": [], "num_nodes": 0, "time": time.monotonic()}
 
@@ -156,9 +137,7 @@ def beam_search(
                     ]
                 )
             batch_p = torch.nn.functional.softmax(logits, -1) if beam_width > 1 else logits
-            batch_p = batch_p.detach().cpu().numpy()
-
-        batch_p = batch_p.astype(np.half)
+            batch_p = batch_p.half().detach().cpu().numpy()
 
         ### Evaluate each candidate base on cumprod ###
 
@@ -171,14 +150,11 @@ def beam_search(
 
         # Calculate log-sum of the cumulative probability of each candidate path
         # Equivalent to `candidates["cumprod"] = np.multiply(batch_p, candidates["cumprod"][:, None]).reshape(-1)`
-        candidates["cumprod"] = (
-            np.log(batch_p) + candidates["cumprod"][:, None]
-        ).reshape(-1)
+        with np.errstate(divide='ignore'):
+            candidates["cumprod"] = (candidates["cumprod"][:, None] + np.log(batch_p)).reshape(-1)
 
         # Expand states & paths as the next-depth candidates
-        candidates["state"] = np.repeat(
-            candidates["state"], len(env.moves_ix_inference), axis=0
-        )
+        candidates["state"] = np.repeat(candidates["state"], len(env.moves_ix_inference), axis=0)
         candidates["path"] = np.hstack(
             (
                 np.repeat(candidates["path"], len(env.moves_ix_inference), axis=0),
@@ -217,26 +193,18 @@ def beam_search(
 
         if not env.allow_wide:
             logger.debug("[ sticker replacement ]")
-            state_ix = (
-                np.arange(0, len(sorted_indices), dtype=np.intc)[:, None] * 54
-            )  # [[0], [54], [108], [162], ...]
+            state_ix = np.arange(0, len(sorted_indices), dtype=np.intc)[:, None] * 54  # [[0], [54], [108], [162], ...]
             move_indices = candidates["path"][:, -1]
             target_ix = state_ix + env.sticker_target_ix[move_indices]
             source_ix = state_ix + env.sticker_source_ix[move_indices]
             if logger.level <= 10:
                 assert state_ix.ndim == 2 and move_indices.ndim == 1
-                logger.debug(
-                    f"{state_ix.shape=}\n{move_indices.shape=}"
-                )  # (8, 1)\n(8, )
-                logger.debug(
-                    f"{target_ix.shape=}\n{source_ix.shape=}"
-                )  # (8, 20)\n(8, 20)
+                logger.debug(f"{state_ix.shape=}\n{move_indices.shape=}")  # (8, 1)\n(8, )
+                logger.debug(f"{target_ix.shape=}\n{source_ix.shape=}")  # (8, 20)\n(8, 20)
                 for i in range(len(sorted_indices)):
                     validate_state(i)
             # Sticker replacement on the batch level (executed in the flattened view)
-            candidates["state"].flat[target_ix.flatten()] = candidates["state"].flat[
-                source_ix.flatten()
-            ]
+            candidates["state"].flat[target_ix.flatten()] = candidates["state"].flat[source_ix.flatten()]
             if logger.level <= 10:
                 for i in range(len(sorted_indices)):
                     validate_state(i)
@@ -256,17 +224,11 @@ def beam_search(
                 )
                 if logger.level <= 10:
                     assert state_ix.ndim == 2 and move_indices.ndim == 1
-                    logger.debug(
-                        f"{state_ix.shape=}\n{move_indices.shape=}"
-                    )  # (8, 1)\n(8, )
-                    logger.debug(
-                        f"{target_ix.shape=}\n{source_ix.shape=}"
-                    )  # (8, 20)\n(8, 20)
+                    logger.debug(f"{state_ix.shape=}\n{move_indices.shape=}")  # (8, 1)\n(8, )
+                    logger.debug(f"{target_ix.shape=}\n{source_ix.shape=}")  # (8, 20)\n(8, 20)
                     for i in indices_flat.flatten():
                         validate_state(i)
-                candidates["state"].flat[target_ix.flatten()] = candidates[
-                    "state"
-                ].flat[source_ix.flatten()]
+                candidates["state"].flat[target_ix.flatten()] = candidates["state"].flat[source_ix.flatten()]
                 if logger.level <= 10:
                     for i in indices_flat.flatten():
                         validate_state(i)
@@ -278,31 +240,21 @@ def beam_search(
                 move_indices = candidates["path"][indices_wide, -1].flatten() - 18
 
                 logger.debug(" - Sticker replacement")
-                state_ix = (
-                    indices_wide * 54
-                )  # array([[  54], [ 162], [ 270], [ 378], [ 486], [ 594], [ 648] ...
+                state_ix = indices_wide * 54  # array([[  54], [ 162], [ 270], [ 378], [ 486], [ 594], [ 648] ...
                 target_ix = state_ix + env.sticker_target_ix_wide[move_indices]
                 source_ix = state_ix + env.sticker_source_ix_wide[move_indices]
                 if logger.level <= 10:
                     assert state_ix.ndim == 2 and move_indices.ndim == 1
-                    logger.debug(
-                        f"{state_ix.shape=}\n{move_indices.shape=}"
-                    )  # (8, 1)\n(8, )
-                    logger.debug(
-                        f"{target_ix.shape=}\n{source_ix.shape=}"
-                    )  # (8, 20)\n(8, 20)
+                    logger.debug(f"{state_ix.shape=}\n{move_indices.shape=}")  # (8, 1)\n(8, )
+                    logger.debug(f"{target_ix.shape=}\n{source_ix.shape=}")  # (8, 20)\n(8, 20)
                     for i in indices_flat.flatten():
                         validate_state(i)
-                candidates["state"].flat[target_ix.flatten()] = candidates[
-                    "state"
-                ].flat[source_ix.flatten()]
+                candidates["state"].flat[target_ix.flatten()] = candidates["state"].flat[source_ix.flatten()]
                 if logger.level <= 10:
                     for i in indices_wide.flatten():
                         validate_state(i, centered=False)
 
-                logger.debug(
-                    " - Reset color indices according to center colors after wide moves"
-                )
+                logger.debug(" - Reset color indices according to center colors after wide moves")
                 # 1. Get center colors
                 centers = candidates["state"][indices_wide, env.CENTER_INDICES]
                 indices_wide = indices_wide.flatten()  # can be flattened once sliced
@@ -312,9 +264,7 @@ def beam_search(
                 logger.debug(
                     f"{mapping.shape=}\n{mapping_indices.shape=}\n{candidates['state'][indices_wide, :].shape=}"
                 )
-                candidates["state"][indices_wide, :] = mapping[
-                    mapping_indices, candidates["state"][indices_wide, :]
-                ]
+                candidates["state"][indices_wide, :] = mapping[mapping_indices, candidates["state"][indices_wide, :]]
                 if logger.level <= 10:
                     for i in indices_wide:
                         validate_state(i)
@@ -322,9 +272,7 @@ def beam_search(
         ### Check if solved & done ###
 
         # Convert candidate states to bytes for goal collation AND uniqueness comparison
-        candidates_state_bytes = np.array(
-            [bytes(c_state.tolist()) for c_state in candidates["state"]]
-        )
+        candidates_state_bytes = np.array([bytes(c_state.tolist()) for c_state in candidates["state"]])
         is_solved = candidates_state_bytes == bytes(env.GOAL.tolist())
         # Add the number of current candidates to the node count
         solutions["num_nodes"] += len(sorted_indices)

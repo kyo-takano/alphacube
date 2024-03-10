@@ -9,8 +9,9 @@ Class:
 
 import os
 import random
-import torch
+
 import numpy as np
+import torch
 from rich import print
 
 
@@ -342,6 +343,19 @@ class Dataset(torch.utils.data.Dataset):
         return next(self.generators[i % self.num_workers])
 
 
-def get_dataloader(batch_size, num_workers=os.cpu_count(), max_depth=20):
+def get_dataloader(batch_size, num_workers=os.cpu_count(), max_depth=20, **dl_kwargs):
+    """
+    Create a DataLoader instance for generating random Rubik's Cube scrambles.
+
+    Args:
+        batch_size (int): The number of samples per batch.
+        num_workers (int, optional): The number of worker processes to use for data loading.
+            Defaults to the number of CPU cores available.
+        max_depth (int, optional): The maximum depth of the scrambles. Defaults to 20.
+        **dl_kwargs: Additional keyword arguments to pass to the DataLoader constructor.
+
+    Returns:
+        torch.utils.data.DataLoader: A DataLoader instance that yields batches of random scrambles.
+    """
     ds = Dataset(max_depth=max_depth, num_workers=num_workers)
-    return torch.utils.data.DataLoader(ds, num_workers=num_workers, batch_size=batch_size)
+    return torch.utils.data.DataLoader(ds, num_workers=num_workers, batch_size=batch_size, **dl_kwargs)

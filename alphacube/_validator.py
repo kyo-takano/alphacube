@@ -28,10 +28,11 @@ Note:
 
 """
 
-from pydantic import BaseModel, validator, model_validator
-from typing import Optional
 import json
 import re
+from typing import Optional
+
+from pydantic import BaseModel, model_validator, validator
 
 
 class Input(BaseModel):
@@ -42,12 +43,8 @@ class Input(BaseModel):
     format: str  # The format of the input data. Must be either 'moves' or 'stickers'.
     scramble: list  # The scramble data in the specified format.
     beam_width: int  # The beam width for the task. Must be a positive integer.
-    extra_depths: (
-        int  # The number of extra depths for the task. Must be a non-negative integer.
-    )
-    ergonomic_bias: Optional[
-        dict
-    ]  # Optional ergonomic bias information (not strictly validated).
+    extra_depths: int  # The number of extra depths for the task. Must be a non-negative integer.
+    ergonomic_bias: Optional[dict]  # Optional ergonomic bias information (not strictly validated).
 
     @validator("format")
     @classmethod
@@ -65,9 +62,7 @@ class Input(BaseModel):
             ValueError: If the format is not 'moves' or 'stickers'.
         """
         if value not in ["moves", "stickers"]:
-            raise ValueError(
-                "Invalid input format. Must be either 'moves' or 'stickers'."
-            )
+            raise ValueError("Invalid input format. Must be either 'moves' or 'stickers'.")
         return value
 
     @validator("beam_width")
@@ -135,13 +130,9 @@ class Input(BaseModel):
             if isinstance(scramble, str):
                 scramble = scramble.split()
             scramble = [m.replace("2'", "2") for m in scramble]
-            invalid_moves = [
-                m for m in scramble if not re.match(r"^[UDLRFBudlrfb'2]{1,2}$", m)
-            ]  # no wide moves -- yet
+            invalid_moves = [m for m in scramble if not re.match(r"^[UDLRFBudlrfb'2]{1,2}$", m)]  # no wide moves -- yet
             if invalid_moves:
-                raise ValueError(
-                    f"Invalid move{'s' if len(invalid_moves) > 1 else ''} in `scramble`: {invalid_moves}"
-                )
+                raise ValueError(f"Invalid move{'s' if len(invalid_moves) > 1 else ''} in `scramble`: {invalid_moves}")
         elif format == "stickers":
             if isinstance(scramble, str):
                 scramble = json.loads(scramble.replace("\\\n", ""))
