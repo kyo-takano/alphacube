@@ -79,6 +79,16 @@ def solve(*args, **kwargs):
     return _solver(*args, **kwargs)
 
 
+def list_models():
+    """
+    List the available model IDs.
+
+    Returns:
+        list: A list of available model IDs.
+    """
+    return ["small", "base", "large"]
+
+
 # CLI Option
 def cli():
     """
