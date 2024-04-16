@@ -130,9 +130,13 @@ class Input(BaseModel):
             if isinstance(scramble, str):
                 scramble = scramble.split()
             scramble = [m.replace("2'", "2") for m in scramble]
-            invalid_moves = [m for m in scramble if not re.match(r"^[UDLRFBudlrfb'2]{1,2}$", m)]  # no wide moves -- yet
+            invalid_moves = [
+                m for m in scramble if not re.match(r"^[UDLRFBudlrfb'2]{1,2}$", m)
+            ]  # no wide moves -- yet
             if invalid_moves:
-                raise ValueError(f"Invalid move{'s' if len(invalid_moves) > 1 else ''} in `scramble`: {invalid_moves}")
+                raise ValueError(
+                    f"Invalid move{'s' if len(invalid_moves) > 1 else ''} in `scramble`: {invalid_moves}"
+                )
         elif format == "stickers":
             if isinstance(scramble, str):
                 scramble = json.loads(scramble.replace("\\\n", ""))

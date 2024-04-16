@@ -164,9 +164,10 @@ print(result)
 > }
 > ```
 
-Using a GPU provides an order of magnitude speedup over CPU especially for larger models.
+Using a GPU provides an order of magnitude speedup over CPUs, especially for larger models.
 
-> [!IMPORTANT] When running AlphaCube _on a CPU_, it's generally recommended to stick with the `"small"` model, as the larger `"base"` and `"large"` models would take considerably more time to find solutions.
+> [!IMPORTANT]
+> When running AlphaCube _on a CPU_, it's generally recommended to stick with the `"small"` model, as the larger `"base"` and `"large"` models would take considerably more time to find solutions.
 
 Please refer to our [documentation](https://alphacube.dev/docs) for more, especially ["Getting Started"](https://alphacube.dev/docs/getting-started/index.html)
 

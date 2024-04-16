@@ -24,7 +24,7 @@ env/
 .DS_Store
 
 # Large files
-*.zip
+# *.zip
 *.pth
 *.tar.gz
 
@@ -34,3 +34,4 @@ build/
 eggs/
 *.egg-info/
 *.egg
+test.py

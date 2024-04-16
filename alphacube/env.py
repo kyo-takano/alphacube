@@ -12,7 +12,7 @@ import random
 
 import numpy as np
 import torch
-from rich import print
+from rich import print as rprint
 
 
 class Cube3:
@@ -106,9 +106,7 @@ class Cube3:
         self.max_depth = max_depth
         self.moves_ix = [self.moves.index(f + n) for f in faces for n in degrees]
 
-    def show(
-        self, flat=False, palette=["white", "yellow", "orange1", "red", "blue", "green"]
-    ):
+    def show(self, flat=False, palette=["white", "yellow", "orange1", "red", "blue", "green"]):
         """
         Display the cube's current state.
 
@@ -119,16 +117,14 @@ class Cube3:
         palette = ["white", "black", "blue", "red", "pink1", "green"]
         state_by_face = self.state.reshape(6, 9)
         if not flat:
-            state_by_face = state_by_face[:, [2, 5, 8, 1, 4, 7, 0, 3, 6]].reshape(
-                6, 3, 3
-            )
+            state_by_face = state_by_face[:, [2, 5, 8, 1, 4, 7, 0, 3, 6]].reshape(6, 3, 3)
         state_by_face = str(state_by_face)
         for i, color in zip(range(6), palette):
             state_by_face = state_by_face.replace(str(i), f"[{color}]{i}[/{color}]")
-        print(state_by_face)
-        print()
+        rprint(state_by_face)
+        rprint()
 
-    def validate(self, centered=True):
+    def validate(self, state=None, centered=True):
         """
         Validate the cube's state and arrangement.
 
@@ -138,6 +134,9 @@ class Cube3:
         Raises:
             ValueError: If the cube's state or arrangement is invalid.
         """
+        if state is not None:
+            self.state[:] = state
+
         centers = self.state[self.CENTER_INDICES]
 
         if centered and not np.all(centers == self.CENTERS_HAT):
@@ -152,7 +151,7 @@ class Cube3:
             self.show(flat=True)
             raise ValueError("Centers are not in the right order.")
         elif not np.all(np.sort(self.state) == self.GOAL):
-            print(np.sort(self.state).reshape(6, 9), "!= env.goal")
+            rprint(np.sort(self.state).reshape(6, 9), "!= env.goal")
             raise ValueError("Inconsistent number of colors.")
 
     def reset(self):
@@ -193,9 +192,7 @@ class Cube3:
             ix (int): Index of the move.
         """
         if ix < 18:
-            self.state[self.sticker_target_ix[ix]] = self.state[
-                self.sticker_source_ix[ix]
-            ]
+            self.state[self.sticker_target_ix[ix]] = self.state[self.sticker_source_ix[ix]]
         else:
             self.state[self.sticker_target_ix_wide[ix % 18]] = self.state[
                 self.sticker_source_ix_wide[ix % 18]
@@ -229,9 +226,7 @@ class Cube3:
                         if ix // 3 == seq[-1] // 3:
                             continue
                         # Skip two moves on a same face with an opposite move in between
-                        if _ > 1 and (
-                            ix // 3 == seq[-2] // 3 and ix // 6 == seq[-1] // 6
-                        ):
+                        if _ > 1 and (ix // 3 == seq[-2] // 3 and ix // 6 == seq[-1] // 6):
                             continue
                         break
                 else:
@@ -253,30 +248,208 @@ class Cube3:
 
         self.sticker_replacement = {
             # Sticker A is replaced by another sticker at index B -> {A: B}
-            'U':{0: 6, 1: 3, 2: 0, 3: 7, 5: 1, 6: 8, 7: 5, 8: 2, 20: 47, 23: 50, 26: 53, 29: 38, 32: 41, 35: 44, 38: 20, 41: 23, 44: 26, 47: 29, 50: 32, 53: 35},
-            'D':{9: 15, 10: 12, 11: 9, 12: 16, 14: 10, 15: 17, 16: 14, 17: 11, 18: 36, 21: 39, 24: 42, 27: 45, 30: 48, 33: 51, 36: 27, 39: 30, 42: 33, 45: 18, 48: 21, 51: 24},
-            'L':{0: 44, 1: 43, 2: 42, 9: 45, 10: 46, 11: 47, 18: 24, 19: 21, 20: 18, 21: 25, 23: 19, 24: 26, 25: 23, 26: 20, 42: 11, 43: 10, 44: 9, 45: 0, 46: 1, 47: 2},
-            'R':{6: 51, 7: 52, 8: 53, 15: 38, 16: 37, 17: 36, 27: 33, 28: 30, 29: 27, 30: 34, 32: 28, 33: 35, 34: 32, 35: 29, 36: 8, 37: 7, 38: 6, 51: 15, 52: 16, 53: 17},
-            'B':{2: 35, 5: 34, 8: 33, 9: 20, 12: 19, 15: 18, 18: 2, 19: 5, 20: 8, 33: 9, 34: 12, 35: 15, 36: 42, 37: 39, 38: 36, 39: 43, 41: 37, 42: 44, 43: 41, 44: 38},
-            'F':{0: 24, 3: 25, 6: 26, 11: 27, 14: 28, 17: 29, 24: 17, 25: 14, 26: 11, 27: 6, 28: 3, 29: 0, 45: 51, 46: 48, 47: 45, 48: 52, 50: 46, 51: 53, 52: 50, 53: 47}
+            "U": {
+                0: 6,
+                1: 3,
+                2: 0,
+                3: 7,
+                5: 1,
+                6: 8,
+                7: 5,
+                8: 2,
+                20: 47,
+                23: 50,
+                26: 53,
+                29: 38,
+                32: 41,
+                35: 44,
+                38: 20,
+                41: 23,
+                44: 26,
+                47: 29,
+                50: 32,
+                53: 35,
+            },
+            "D": {
+                9: 15,
+                10: 12,
+                11: 9,
+                12: 16,
+                14: 10,
+                15: 17,
+                16: 14,
+                17: 11,
+                18: 36,
+                21: 39,
+                24: 42,
+                27: 45,
+                30: 48,
+                33: 51,
+                36: 27,
+                39: 30,
+                42: 33,
+                45: 18,
+                48: 21,
+                51: 24,
+            },
+            "L": {
+                0: 44,
+                1: 43,
+                2: 42,
+                9: 45,
+                10: 46,
+                11: 47,
+                18: 24,
+                19: 21,
+                20: 18,
+                21: 25,
+                23: 19,
+                24: 26,
+                25: 23,
+                26: 20,
+                42: 11,
+                43: 10,
+                44: 9,
+                45: 0,
+                46: 1,
+                47: 2,
+            },
+            "R": {
+                6: 51,
+                7: 52,
+                8: 53,
+                15: 38,
+                16: 37,
+                17: 36,
+                27: 33,
+                28: 30,
+                29: 27,
+                30: 34,
+                32: 28,
+                33: 35,
+                34: 32,
+                35: 29,
+                36: 8,
+                37: 7,
+                38: 6,
+                51: 15,
+                52: 16,
+                53: 17,
+            },
+            "B": {
+                2: 35,
+                5: 34,
+                8: 33,
+                9: 20,
+                12: 19,
+                15: 18,
+                18: 2,
+                19: 5,
+                20: 8,
+                33: 9,
+                34: 12,
+                35: 15,
+                36: 42,
+                37: 39,
+                38: 36,
+                39: 43,
+                41: 37,
+                42: 44,
+                43: 41,
+                44: 38,
+            },
+            "F": {
+                0: 24,
+                3: 25,
+                6: 26,
+                11: 27,
+                14: 28,
+                17: 29,
+                24: 17,
+                25: 14,
+                26: 11,
+                27: 6,
+                28: 3,
+                29: 0,
+                45: 51,
+                46: 48,
+                47: 45,
+                48: 52,
+                50: 46,
+                51: 53,
+                52: 50,
+                53: 47,
+            },
         }
         if self.allow_wide:
             # Slice moves
-            self.sticker_replacement.update({
-                # Definition: https://jperm.net/3x3/moves
-                "M": {49: 4, 4: 40, 40: 13, 13: 49, 50: 5, 5: 39, 39: 14, 14: 50, 48: 3, 3: 41, 41: 12, 12: 48},
-                "S": {31: 4, 4: 22, 22: 13, 13: 31, 32: 1, 1: 21, 21: 16, 16: 32, 30: 7, 7: 23, 23: 10, 10: 30},
-                "E": {49: 22, 22: 40, 40: 31, 31:49, 46: 19, 19:37, 37: 28, 28: 46, 52: 25, 25: 43, 43: 34, 34: 52},
-            })
+            self.sticker_replacement.update(
+                {
+                    # Definition: https://jperm.net/3x3/moves
+                    "M": {
+                        49: 4,
+                        4: 40,
+                        40: 13,
+                        13: 49,
+                        50: 5,
+                        5: 39,
+                        39: 14,
+                        14: 50,
+                        48: 3,
+                        3: 41,
+                        41: 12,
+                        12: 48,
+                    },
+                    "S": {
+                        31: 4,
+                        4: 22,
+                        22: 13,
+                        13: 31,
+                        32: 1,
+                        1: 21,
+                        21: 16,
+                        16: 32,
+                        30: 7,
+                        7: 23,
+                        23: 10,
+                        10: 30,
+                    },
+                    "E": {
+                        49: 22,
+                        22: 40,
+                        40: 31,
+                        31: 49,
+                        46: 19,
+                        19: 37,
+                        37: 28,
+                        28: 46,
+                        52: 25,
+                        25: 43,
+                        43: 34,
+                        34: 52,
+                    },
+                }
+            )
             # Wide moves
-            self.sticker_replacement.update({
-                "u": {**self.sticker_replacement['U'], **{v:k for k,v in self.sticker_replacement['E'].items()}},
-                "d": {**self.sticker_replacement['D'], **self.sticker_replacement['E']},
-                "l": {**self.sticker_replacement['L'], **self.sticker_replacement['M']},
-                "r": {**self.sticker_replacement['R'], **{v:k for k,v in self.sticker_replacement['M'].items()}},
-                "b": {**self.sticker_replacement['B'], **{v:k for k,v in self.sticker_replacement['S'].items()}},
-                "f": {**self.sticker_replacement['F'], **self.sticker_replacement['S']},
-            })
+            self.sticker_replacement.update(
+                {
+                    "u": {
+                        **self.sticker_replacement["U"],
+                        **{v: k for k, v in self.sticker_replacement["E"].items()},
+                    },
+                    "d": {**self.sticker_replacement["D"], **self.sticker_replacement["E"]},
+                    "l": {**self.sticker_replacement["L"], **self.sticker_replacement["M"]},
+                    "r": {
+                        **self.sticker_replacement["R"],
+                        **{v: k for k, v in self.sticker_replacement["M"].items()},
+                    },
+                    "b": {
+                        **self.sticker_replacement["B"],
+                        **{v: k for k, v in self.sticker_replacement["S"].items()},
+                    },
+                    "f": {**self.sticker_replacement["F"], **self.sticker_replacement["S"]},
+                }
+            )
 
         for m in self.moves:
             if len(m) == 1:
@@ -332,8 +505,7 @@ class Dataset(torch.utils.data.Dataset):
     def __init__(self, max_depth=20, num_workers=os.cpu_count()):
         self.num_workers = num_workers
         self.generators = [
-            iter(Cube3(allow_wide=False, max_depth=max_depth))
-            for _ in range(num_workers)
+            iter(Cube3(allow_wide=False, max_depth=max_depth)) for _ in range(num_workers)
         ]
 
     def __len__(self):
@@ -344,11 +516,11 @@ class Dataset(torch.utils.data.Dataset):
 
 
 def get_dataloader(
-        batch_size,
-        num_workers=min(os.cpu_count(), 32),  # DataLoader slightly slows down beyond 32 CPU cores
-        max_depth=20,
-        **dl_kwargs
-    ):
+    batch_size,
+    num_workers=min(os.cpu_count(), 32),  # DataLoader slightly slows down beyond 32 CPU cores
+    max_depth=20,
+    **dl_kwargs,
+):
     """
     Create a DataLoader instance for generating random Rubik's Cube scrambles.
 
@@ -363,4 +535,6 @@ def get_dataloader(
         torch.utils.data.DataLoader: A DataLoader instance that yields batches of random scrambles.
     """
     ds = Dataset(max_depth=max_depth, num_workers=num_workers)
-    return torch.utils.data.DataLoader(ds, num_workers=num_workers, batch_size=batch_size, **dl_kwargs)
+    return torch.utils.data.DataLoader(
+        ds, num_workers=num_workers, batch_size=batch_size, **dl_kwargs
+    )

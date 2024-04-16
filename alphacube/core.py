@@ -10,7 +10,7 @@ Class:
 Example::
 
     from alphacube.solver import Solver
-    solver = Solver() # Assigned to `alphacube._solver` at the package level.
+    solver = Solver() # Assigned to `alphacube.solver` at the package level.
     solver.load()
     solution = solver(format='moves', scramble="R U R' U'", beam_width=1024)
 
@@ -18,12 +18,12 @@ Example::
 
 import torch
 
-from . import logargs, logger
+from . import logger, logargs, device
+
 from .env import Cube3
 from .model import load_model
 from .search import beam_search
-
-DEVICE = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
+from ._evaluator import evaluate_search_efficiency, evaluate_temporal_performance
 
 
 class Solver:
@@ -34,7 +34,12 @@ class Solver:
     - ``__call__``: Set up the cube state and pass it for solution using beam search.
     """
 
-    def load(self, model_id, prefer_gpu=True, quantize_on_cpu=True, jit_mode=False, *args, **kwargs):
+    evaluate_search_efficiency = evaluate_search_efficiency
+    evaluate_temporal_performance = evaluate_temporal_performance
+
+    def load(
+        self, model_id, prefer_gpu=True, quantize_on_cpu=True, jit_mode=False, *args, **kwargs
+    ):
         """
         Load the Rubik's Cube solver model and optimize it for CPU or GPU.
 
@@ -50,19 +55,25 @@ class Solver:
             None
         """
         # Load the model (download if not yet)
-        self.model = load_model(model_id, *args, **kwargs)
-        if prefer_gpu and DEVICE != "cpu":
-            logger.info(f"[grey50]Running on {DEVICE.upper()}", **logargs)
-            self.model.to(DEVICE)
+        self.model_id = model_id
+        self.model = load_model(self.model_id, *args, **kwargs)
+        if prefer_gpu and device.type != "cpu":
+            logger.info(f"[grey50]Running on {device.type.upper()}", **logargs)
+            self.model.to(device)
         else:
             logger.info("[grey50]Running on CPU (no GPU found)", **logargs)
             if quantize_on_cpu:
-                logger.info("[grey50]Quantizing the model -- roughly 3x faster [italic]on CPU", **logargs)
-                self.model = torch.ao.quantization.quantize_dynamic(self.model, {torch.nn.Linear}, dtype=torch.qint8)
+                logger.info(
+                    "[grey50]Quantizing the model -- roughly 3x faster [italic]on CPU", **logargs
+                )
+                self.model = torch.ao.quantization.quantize_dynamic(
+                    self.model, {torch.nn.Linear}, dtype=torch.qint8
+                )
 
         if jit_mode:
             logger.info(
-                "[grey50]JIT-mode enabled -- [italic]potentially[/italic] faster than eager execution", **logargs
+                "[grey50]JIT-mode enabled -- [italic]potentially[/italic] faster than eager execution",
+                **logargs,
             )
             self.model = torch.jit.script(self.model)
 

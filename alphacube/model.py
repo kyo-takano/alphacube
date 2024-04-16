@@ -45,22 +45,24 @@ def load_model(
         with requests.get(model_url, stream=True) as r:
             total_size = int(r.headers.get("Content-Length"))
             with Progress() as progress:
-                task = progress.add_task("[cyan]Downloading ...", total=total_size)
+                task = progress.add_task(
+                    f"[cyan]Downloading [bold]`{model_id}`[/bold]", total=total_size
+                )
                 with open(model_path, "wb") as output:
                     for chunk in r.iter_content(chunk_size=8192):
                         output.write(chunk)
-                        progress.update(task, completed=len(chunk))
+                        progress.update(task, advance=len(chunk))
         logger.info(f"[grey50]Saved to {model_path}", **logargs)
-        try:
-            state_dict = torch.load(model_path, map_location=torch.device("cpu"))
-        except Exception as e:
-            os.remove(model_path)
-            raise ValueError(
-                f"The model file appears to be broken, most likely because of permission error (deleted):\n{e}"
-            )
     else:
         logger.info(f"[grey50]Loading AlphaCube solver from cache at {model_path}", **logargs)
+    try:
         state_dict = torch.load(model_path, map_location=torch.device("cpu"))
+    except Exception as e:
+        os.remove(model_path)
+        raise ValueError(
+            "The model file appears to be broken and thus is deleted. "
+            f"This is most likely because of permission error (deleted):\n\t{e}"
+        )
 
     if model_id in ["small", "base", "large"]:
         module = Model_v1
@@ -124,8 +126,19 @@ class Model(nn.Module):
     def __init__(self, hidden_size=4096, num_hidden_layers=8, input_dim=324, output_dim=18):
         super(Model, self).__init__()
         self.embedding = nn.Linear(input_dim, hidden_size, bias=False)
-        self.layers = nn.ModuleList([LinearBlock(hidden_size, hidden_size) for i in range(num_hidden_layers)])
+        self.layers = nn.ModuleList(
+            [LinearBlock(hidden_size, hidden_size) for i in range(num_hidden_layers)]
+        )
         self.head = nn.Linear(hidden_size, output_dim, bias=False)
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        nn.init.normal_(self.embedding.weight, std=1 / 54**0.5)  # There'll be 54 ones in a sample
+        for layer in self.layers:
+            nn.init.kaiming_normal_(layer.fc.weight)
+            if layer.fc.bias is not None:
+                nn.init.zeros_(layer.fc.bias)
+        nn.init.zeros_(self.head.weight)
 
     def forward(self, inputs):
         x = F.one_hot(inputs, 6).reshape(-1, 324).float()

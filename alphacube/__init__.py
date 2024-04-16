@@ -12,44 +12,23 @@ Functions:
 Example::
 
     import alphacube
-    alphacube.load(model_id="base")
+    alphacube.load("base")
     solution = alphacube.solve(format='moves', scramble="R U R' U'", beam_width=1024)
 
 """
 
-import logging
-from rich.console import Console
-from rich.logging import RichHandler
-
-logger = logging.getLogger("rich")
-logger.propagate = False
-logger.addHandler(RichHandler(console=Console(stderr=True)))
-logger.setLevel(logging.WARNING)
-logargs = dict(extra={"markup": True})
-
-
-# Set up logging level
-def set_verbose(loglevel=logging.INFO):
-    """
-    Set the verbosity level of the logger.
-
-    Args:
-        loglevel (int): Logging level (e.g., logging.INFO, logging.DEBUG) to control the verbosity.
-
-    Returns:
-        None
-    """
-    global logger
-    logger.setLevel(loglevel)
-
+from .utils import logger, logargs, set_verbose, device, dtype
 
 from ._validator import Input
-from .solver import Solver
-
-_solver = Solver()
+from .core import Solver
 
 
-def load(model_id="small", *args, **kwargs):
+solver = _solver = Solver()
+
+__all__ = ["load", "solve", "cli", "solver", "logger", "logargs", "set_verbose", "device", "dtype"]
+
+
+def load(model_id="small" if device.type == "cpu" else "large", *args, **kwargs):
     """
     Load the Rubik's Cube solver model.
 
@@ -60,7 +39,7 @@ def load(model_id="small", *args, **kwargs):
     Returns:
         None
     """
-    _solver.load(model_id, *args, **kwargs)
+    solver.load(model_id, *args, **kwargs)
 
 
 def solve(*args, **kwargs):
@@ -73,10 +52,10 @@ def solve(*args, **kwargs):
     Returns:
         dict | None: A dictionary containing solutions and performance metrics. None if failed.
     """
-    if _solver.model is None:
-        raise ValueError("Model not loaded. Call `load` with appropriate arguments first.")
+    if not hasattr(solver, "model"):
+        raise ValueError("Model not loaded. Call `load`  first.")
 
-    return _solver(*args, **kwargs)
+    return solver(*args, **kwargs)
 
 
 def list_models():
@@ -134,11 +113,13 @@ def cli():
 
     :return: None
     """
-    from rich import print
-
     import argparse
 
-    parser = argparse.ArgumentParser(description="AlphaCube -- State-of-the-Art Rubik's Cube Solver")
+    from rich import print as rprint
+
+    parser = argparse.ArgumentParser(
+        description="AlphaCube -- State-of-the-Art Rubik's Cube Solver"
+    )
     parser.add_argument(
         "--model_id",
         "-m",
@@ -178,7 +159,7 @@ def cli():
         "-v",
         dest="loglevel",
         action="store_const",
-        const=logging.INFO,
+        const=20,
         help="Enable verbose output for tracking progress",
     )
     args = parser.parse_args()
@@ -202,15 +183,12 @@ def cli():
     )
 
     # Load only once validated
-    _solver.load(model_id)
+    solver.load(model_id)
     # Solve
-    solutions = _solver(
+    solutions = solver(
         format=args.format,
         scramble=args.scramble,
         beam_width=args.beam_width,
         extra_depths=args.extra_depths,
     )
-    print(solutions)
-
-
-__all__ = ["load", "solve", "cli"]
+    rprint(solutions)
