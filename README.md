@@ -48,7 +48,7 @@ pip install -U alphacube
 ```python
 import alphacube
 
-# Load a trained DNN (default is "small" model)
+# Load a trained DNN (default: "small" on cpu, "large" on GPU)
 alphacube.load()
 
 # Solve the cube using a given scramble sequence
