@@ -25,7 +25,7 @@ MAX_BATCH_SIZE = 2**16  # The maximum number of states forward-pass through a DN
 ctx = torch.autocast(device.type, dtype) if device.type != "cpu" else nullcontext()
 
 
-@torch.no_grad()
+@torch.inference_mode()
 def predict(model, batch_x, beam_width, ergonomic_bias, env):
     batch_x = torch.from_numpy(batch_x).to(device)
     with ctx:
@@ -41,16 +41,16 @@ def predict(model, batch_x, beam_width, ergonomic_bias, env):
                     )
                 ]
             )
-    batch_p = logits.softmax(-1) if beam_width > 1 else logits  # You can argmax from logits
-    batch_p = batch_p.detach().cpu().numpy()  # float32
+    batch_logprob = logits.log_softmax(-1).detach().cpu().numpy()  # float32
 
     # Apply ergonomic bias if given
     if ergonomic_bias is not None:
         if env.allow_wide:
-            batch_p = np.tile(batch_p, 2)
-        batch_p = np.multiply(batch_p, ergonomic_bias)
+            batch_logprob = np.tile(batch_logprob, 2)
+        # batch_p = np.multiply(batch_p, ergonomic_bias)
+        batch_logprob += ergonomic_bias
 
-    return batch_p
+    return batch_logprob
 
 
 def beam_search(
@@ -122,8 +122,8 @@ def beam_search(
 
         # Get a probability distribution for each candidate state
         batch_x = candidates["state"]
-        batch_p = predict(model, batch_x, beam_width, ergonomic_bias, env)
-        candidates = update_candidates(candidates, batch_p, env, depth, beam_width)
+        batch_logprob = predict(model, batch_x, beam_width, ergonomic_bias, env)
+        candidates = update_candidates(candidates, batch_logprob, env, depth, beam_width)
 
         # For record, add the number of current candidates to the node count
         solutions["num_nodes"] += candidates["path"].shape[0]
@@ -172,7 +172,7 @@ def _reflect_setup(ergonomic_bias, env):
         ).reshape(1, -1)
         if np.all(ergonomic_bias[:, 18:] == 0):
             logger.info(
-                "All wide moves (e.g., r2, f2) seem to be 0 ── starting to solve only with flat moves..."
+                "All wide moves (e.g., r2, f2) seem to be 0 â”€â”€ starting to solve only with flat moves..."
             )
             # If wide moves are disabled, switch to flat-move mode
             env.allow_wide = False
@@ -180,6 +180,7 @@ def _reflect_setup(ergonomic_bias, env):
             ergonomic_bias = ergonomic_bias[:, :18]
             logger.debug(f"{ergonomic_bias.shape=}")
         ergonomic_bias /= ergonomic_bias.mean()
+        ergonomic_bias = np.log(ergonomic_bias)
         logger.debug(f"{ergonomic_bias=}")
     else:
         # There is no point in wide moves with no ergonomic bias
@@ -189,19 +190,19 @@ def _reflect_setup(ergonomic_bias, env):
     return ergonomic_bias, env
 
 
-def update_candidates(candidates, batch_p, env, depth, beam_width):
+def update_candidates(candidates, batch_logprob, env, depth, beam_width):
     # Accumulate the log-probability of each candidate path
     # Non-log equivalent:
-    # `candidates["cumprob"] = np.multiply(batch_p, candidates["cumprob"][:, None]).reshape(-1)`
-    with np.errstate(divide="ignore"):
-        candidates["cumlogprob"] = (candidates["cumlogprob"][:, None] + np.log(batch_p)).reshape(-1)
+    # `candidates["cumprob"] = np.multiply(batch_logprob, candidates["cumprob"][:, None]).reshape(-1)`
+    # with np.errstate(divide="ignore"):
+    candidates["cumlogprob"] = (candidates["cumlogprob"][:, None] + batch_logprob).reshape(-1)
 
     # Expand states & paths as the next-depth candidates
     candidates["state"] = np.repeat(candidates["state"], len(env.moves_ix_inference), axis=0)
     candidates["path"] = np.hstack(
         (
             np.repeat(candidates["path"], len(env.moves_ix_inference), axis=0),
-            np.tile(env.moves_ix_inference, batch_p.shape[0])[:, None],
+            np.tile(env.moves_ix_inference, batch_logprob.shape[0])[:, None],
         )
     )
 
