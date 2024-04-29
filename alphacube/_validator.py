@@ -5,14 +5,15 @@ This module defines the input validator for the AlphaCube application. It includ
 
 Validation Rules:
 
-- ``format`` attribute must be either 'moves' or 'stickers'.
+- `format` attribute must be either 'moves' or 'stickers'.
     - For 'moves' format, the `scramble` attribute must consist of valid moves.
     - For 'stickers' format (not implemented), additional validation may be performed.
-- ``beam_width`` attribute must be a positive integer.
-- ``extra_depths`` attribute must be a non-negative integer.
+- `beam_width` attribute must be a positive integer.
+- `extra_depths` attribute must be a non-negative integer.
 
-Usage Example::
+Usage Example:
 
+    ```python
     input_data = {
         'format': 'moves',
         'scramble': "R U R' U'",
@@ -21,6 +22,7 @@ Usage Example::
         'ergonomic_bias': None
     }
     validated_input = Input(**input_data)
+    ```
 
 Note:
 
@@ -118,10 +120,8 @@ class Input(BaseModel):
         Raises:
             ValueError: If there are invalid moves in 'scramble' for 'moves' format.
             ValueError: If unexpected center-piece configuration in 'scramble' for 'stickers' format (not implemented).
-
-        Todo:
-            Also check for potential orientation, permutation, parity
         """
+        # TODO: Also check for potential orientation, permutation, parity
 
         format = values["format"]
         scramble = values["scramble"]

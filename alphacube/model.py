@@ -4,11 +4,11 @@ Model Loader
 This module provides a function and classes for loading and using a pre-trained AlphaCube solver model.
 
 Function:
-    ``load_model(model_id, cache_dir)``: Load the pre-trained AlphaCube solver model.
+    `load_model(model_id, cache_dir)`: Load the pre-trained AlphaCube solver model.
 
 Classes:
-    - ``Model``: The MLP architecture for the AlphaCube solver.
-    - ``LinearBlock``: A building block for the MLP architecture.
+    - `Model`: The MLP architecture for the AlphaCube solver.
+    - `LinearBlock`: A building block for the MLP architecture.
 """
 
 import os
@@ -118,7 +118,7 @@ class Model(nn.Module):
     """
     An architecture better than `Model`.
 
-    diff:
+    **Changes**:
     - Remove ReLU activation from the first layer (`embedding`), which had the dying ReLU problem.
     - Following the recent convention, the `embedding` layer does *not* count as one hidden layer.
     """

@@ -1,13 +1,14 @@
 """
-Beam Search Algorithm
-
 This module provides a function to perform beam search and find solutions for a given state.
 
 Function:
-    ``beam_search``: Perform beam search to find solutions in a Rubik's Cube environment.
+    `beam_search`: Perform beam search to find solutions in a Rubik's Cube environment.
 
-Note:
-- `numba.jit` *slows down* operations like `_get_prune_idx` and `_map_state`
+:::note
+
+Using `numba.jit` actually *slows down* operations like `_get_prune_idx` and `_map_state`
+
+:::
 """
 
 import time
@@ -65,26 +66,15 @@ def beam_search(
     Performs beam search to find solutions for a given scrambled state.
 
     Args:
-        env (Cube3):
-            The Rubik's Cube environment representing the scrambled state.
-
-        model (torch.nn.Module):
-            DNN used to predict the probability distribution of next moves for every state.
-
-        beam_width (int):
-            The maximum number of candidates to keep at each step of the search.
-
-        ergonomic_bias (dict or None):
-            A dictionary specifying ergonomic bias for moves, if available.
-
-        extra_depths (int):
-            The number of additional depths to search beyond the first solution's depth.
-
-        max_depth (int):
-            The maximum depth to search, should be equal to  or greater than God's Number (20 for Rubik's Cube in HTM).
+        env (Cube3): The Rubik's Cube environment representing the scrambled state.
+        model (torch.nn.Module): DNN used to predict the probability distribution of next moves for every state.
+        beam_width (int): The maximum number of candidates to keep at each step of the search.
+        ergonomic_bias (dict or None): A dictionary specifying ergonomic bias for moves, if available.
+        extra_depths (int): The number of additional depths to search beyond the first solution's depth.
+        max_depth (int): The maximum depth to search, should be equal to  or greater than God's Number (20 for Rubik's Cube in HTM).
 
     Returns:
-        dict or None: A dictionary with the following keys:
+        dict | None: A dictionary with the following keys:
             - 'solutions': A list of optimal or near-optimal solutions found during the search.
             - 'num_nodes': The total number of nodes expanded during the search.
             - 'time': The time taken (in seconds) to complete the search.

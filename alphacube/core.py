@@ -1,19 +1,18 @@
 """
-Solve Manager
-
-This module provides a Solver class for finding Rubik's Cube solutions using a beam search algorithm.
+This module provides the core class `Solver`, which loads a mode and finds Rubik's Cube solutions using a beam search algorithm.
 
 Class:
 
-- ``Solver``: A class for managing Rubik's Cube configuration, solving model, and search function.
+- `Solver`: A class for managing Rubik's Cube configuration, solving model, and search function.
 
-Example::
+Example:
 
+    ```python
     from alphacube.solver import Solver
     solver = Solver() # Assigned to `alphacube.solver` at the package level.
     solver.load()
     solution = solver(format='moves', scramble="R U R' U'", beam_width=1024)
-
+    ```
 """
 
 import torch
@@ -30,8 +29,8 @@ class Solver:
     """
     A solver class for managing environment, model, and search configurations.
     Methods:
-    - ``load``: Load the solver model and optimize it for CPU or GPU.
-    - ``__call__``: Set up the cube state and pass it for solution using beam search.
+    - `load`: Load the solver model and optimize it for CPU or GPU.
+    - `__call__`: Set up the cube state and pass it for solution using beam search.
     """
 
     evaluate_search_efficiency = evaluate_search_efficiency
@@ -81,16 +80,16 @@ class Solver:
 
     def __call__(self, scramble, format="moves", allow_wide=True, **kwargs):
         """
-        Set up the cube state from `format` and `scramble` and pass it to ``search.beam_search`` together with ``**kwargs``.
+        Set up the cube state from `format` and `scramble` and pass it to `search.beam_search` together with `**kwargs`.
 
         Args:
             format (str): Input format of the scramble: either "moves" or "stickers".
             scramble (list): A sequence of moves/stickers representing the initial state of the Rubik's Cube.
             allow_wide (bool): Whether wide moves are allowed.
-            **kwargs: Keyword arguments to be passed to ``beam_search``.
+            **kwargs: Keyword arguments to be passed to `beam_search`.
 
         Returns:
-            solutions (dict | None): Dictionary containing the solution response from ``search.beam_search``.
+            solutions (dict | None): Dictionary containing the solution response from `search.beam_search`.
         """
 
         env = Cube3(allow_wide=allow_wide)

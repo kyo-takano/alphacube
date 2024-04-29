@@ -4,7 +4,7 @@ Rubik's Cube Environment
 This module defines the Cube3 class representing a 3x3x3 Rubik's Cube in the Half-Turn Metric.
 
 Class:
-    ``Cube3``: A class for 3x3x3 Rubik's Cube in Half-Turn Metric.
+    `Cube3`: A class for 3x3x3 Rubik's Cube in Half-Turn Metric.
 """
 
 import os
@@ -23,41 +23,45 @@ class Cube3:
     It defines the cube's initial and goal states, available moves, and methods for cube manipulation.
 
     Representation:
-        Order of faces::
+        Order of faces:
+        ```brainfuck
+           0
+         2 5 3 4
+           1
+        ```
 
-              0
-            2 5 3 4
-              1
+        Order of stickers on each face:
+        ```brainfuck
+          2   5   8
+          1   4   7
+         [0]  3   6
+        ```
 
-        Order of stickers on each face::
+        Indices of state (each starting with 9*(n-1)):
+        ```brainfuck
+                        2   5   8
+                        1   4   7
+                       [0]  3   6
+          20  23  26   47  50  53  29  32  35  38  41  44
+          19  22  25   46  49  52  28  31  34  37  40  43
+         [18] 21  24  [45] 48  51 [27] 30  33 [36] 39  42
+                       11  14  17
+                       10  13  16
+                       [9] 12  15
+        ```
 
-             2   5   8
-             1   4   7
-            [0]  3   6
-
-        Indices of state (each starting with 9*(n-1))::
-
-                          2   5   8
-                          1   4   7
-                         [0]  3   6
-            20  23  26   47  50  53  29  32  35  38  41  44
-            19  22  25   46  49  52  28  31  34  37  40  43
-           [18] 21  24  [45] 48  51 [27] 30  33 [36] 39  42
-                         11  14  17
-                         10  13  16
-                         [9] 12  15
-
-        Colors (indices // 9)::
-
-                          0   0   0
-                          0   0   0
-                          0   0   0
-             2   2   2    5   5   5   3   3   3   4   4   4
-             2   2   2    5   5   5   3   3   3   4   4   4
-             2   2   2    5   5   5   3   3   3   4   4   4
-                          1   1   1
-                          1   1   1
-                          1   1   1
+        Colors (indices // 9):
+        ```brainfuck
+                        0   0   0
+                        0   0   0
+                        0   0   0
+           2   2   2    5   5   5   3   3   3   4   4   4
+           2   2   2    5   5   5   3   3   3   4   4   4
+           2   2   2    5   5   5   3   3   3   4   4   4
+                        1   1   1
+                        1   1   1
+                        1   1   1
+        ```
 
     Attributes:
         state (ndarray): Current cube state represented as an array of sticker colors.
@@ -241,7 +245,7 @@ class Cube3:
     def __vectorize_moves(self):
         """
         Vectorizes the sticker group replacement operations for faster computation.
-        This method defines ``self.sticker_target`` and ``self.sticker_source`` to manage sticker colors (target is replaced by source).
+        This method defines `self.sticker_target` and `self.sticker_source` to manage sticker colors (target is replaced by source).
         They define indices of target and source stickers so that the moves can be vectorized.
         """
         self.sticker_target, self.sticker_source = dict(), dict()
@@ -495,11 +499,12 @@ class Dataset(torch.utils.data.Dataset):
     """
     Pseudo dataset class to infinitely yield random scrambles
 
-    **Example**:
-    >>> batch_size = 1024
-    >>> dl = get_dataloader(batch_size)
-    >>> for i, (batch_x, batch_y) in zip(range(1000), dl):
-    >>>     batch_x, batch_y = batch_x.to(device), batch_y.device().reshape(-1)
+    > ```python title="Example"
+    > batch_size = 1024
+    > dl = get_dataloader(batch_size)
+    > for i, (batch_x, batch_y) in zip(range(1000), dl):
+    >     batch_x, batch_y = batch_x.to(device), batch_y.device().reshape(-1)
+    > ```
     """
 
     def __init__(self, max_depth=20, num_workers=os.cpu_count()):

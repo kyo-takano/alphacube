@@ -1,3 +1,10 @@
+"""
+Module for evaluating the performance of a solver.
+
+This module provides functions to evaluate the performance of a solver on a dataset.
+It includes functions to evaluate the search efficiency and temporal performance of a solver.
+"""
+
 import json
 import os
 import matplotlib.pyplot as plt
@@ -12,6 +19,15 @@ cache_dir = os.path.expanduser("~/.cache/alphacube")
 
 
 def get_dataset(filename="deepcubea-dataset--cube3.json"):
+    """
+    Get a dataset from a file or download it if it doesn't exist.
+
+    Args:
+        filename (str): The filename of the dataset.
+
+    Returns:
+        dict: The dataset.
+    """
     filepath = os.path.join(cache_dir, filename)
     if not os.path.exists(filepath):
         os.makedirs(cache_dir, exist_ok=True)
@@ -44,13 +60,20 @@ def evaluate_search_efficiency(
     verbose=False,
 ):
     """
-        Evaluate the model's performance on a downstream *temporal* performance.
+    Evaluate the model's performance on a downstream *temporal* performance.
 
-        This function evaluates the model's performance by solving a set of scrambles
-        using different beam widths. It then fits a predictor to model the relationship
-        between solution length and time, and predicts the solution length at t=1.
+    This function evaluates the model's performance by solving a set of scrambles
+    using different beam widths. It then fits a predictor to model the relationship
+    between solution length and time, and predicts the solution length achievable in just a second.
 
-    python -c "import alphacube; alphacube.load(); print(alphacube.solver.evaluate_search_efficiency(100, 256, verbose=True))"
+    Args:
+        solver: The solver to evaluate.
+        num_samples (int): The number of samples to use for evaluation.
+        beam_width (int): The beam width to use for evaluation.
+        verbose (bool): Whether to display a progress bar.
+
+    Returns:
+        dict: The mean results.
     """
     dataset = get_dataset()
 
@@ -87,7 +110,15 @@ def evaluate_temporal_performance(
     using different beam widths. It then fits a predictor to model the relationship
     between solution length and time, and predicts the solution length at t=1.
 
-    python -c "import alphacube; alphacube.load(); print(alphacube.solver.evaluate_temporal_performance(verbose=True))"
+    Args:
+        solver: The solver to evaluate.
+        num_samples (int): The number of samples to use for evaluation.
+        t_standard (float): The standard time.
+        beam_width_space (array): The beam widths to use for evaluation.
+        verbose (bool): Whether to display a progress bar.
+
+    Returns:
+        float: The predicted solution length at t=1.
     """
     dataset = get_dataset()
 
