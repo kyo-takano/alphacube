@@ -133,6 +133,9 @@ class Model(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
+        """
+        Initialize all weight such that the activation variances are approximately 1.0, with bias terms & the output layer weights being zeros
+        """
         nn.init.normal_(self.embedding.weight, std=1 / 54**0.5)  # There'll be 54 ones in a sample
         for layer in self.layers:
             nn.init.kaiming_normal_(layer.fc.weight)
@@ -141,6 +144,15 @@ class Model(nn.Module):
         nn.init.zeros_(self.head.weight)
 
     def forward(self, inputs):
+        """
+        Forward pass of the model.
+
+        Args:
+            inputs (torch.Tensor): Input tensor representing the problem state.
+
+        Returns:
+            torch.Tensor: Predicted distribution over possible solutions.
+        """
         x = F.one_hot(inputs, 6).reshape(-1, 324).float()
         x = self.embedding(x)
         for layer in self.layers:

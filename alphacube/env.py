@@ -22,58 +22,58 @@ class Cube3:
     This class provides methods to manipulate and solve a 3x3x3 Rubik's Cube using the half-turn metric.
     It defines the cube's initial and goal states, available moves, and methods for cube manipulation.
 
-    Representation:
-        Order of faces:
-        ```brainfuck
-           0
-         2 5 3 4
-           1
-        ```
-
-        Order of stickers on each face:
-        ```brainfuck
-          2   5   8
-          1   4   7
-         [0]  3   6
-        ```
-
-        Indices of state (each starting with 9*(n-1)):
-        ```brainfuck
-                        2   5   8
-                        1   4   7
-                       [0]  3   6
-          20  23  26   47  50  53  29  32  35  38  41  44
-          19  22  25   46  49  52  28  31  34  37  40  43
-         [18] 21  24  [45] 48  51 [27] 30  33 [36] 39  42
-                       11  14  17
-                       10  13  16
-                       [9] 12  15
-        ```
-
-        Colors (indices // 9):
-        ```brainfuck
-                        0   0   0
-                        0   0   0
-                        0   0   0
-           2   2   2    5   5   5   3   3   3   4   4   4
-           2   2   2    5   5   5   3   3   3   4   4   4
-           2   2   2    5   5   5   3   3   3   4   4   4
-                        1   1   1
-                        1   1   1
-                        1   1   1
-        ```
+    **Representation**:
+    > **Order of faces**:
+    > ```
+    >    0
+    >  2 5 3 4
+    >    1
+    > ```
+    >
+    > **Order of stickers on each face**:
+    > ```
+    >   2   5   8
+    >   1   4   7
+    >  [0]  3   6
+    > ```
+    >
+    > **Indices of state** (each starting with `9 * (n-1)`):
+    > ```
+    >                 2   5   8
+    >                 1   4   7
+    >                [0]  3   6
+    >   20  23  26   47  50  53  29  32  35  38  41  44
+    >   19  22  25   46  49  52  28  31  34  37  40  43
+    >  [18] 21  24  [45] 48  51 [27] 30  33 [36] 39  42
+    >                11  14  17
+    >                10  13  16
+    >                [9] 12  15
+    > ```
+    >
+    > **Colors** (`indices // 9`):
+    > ```
+    >                 0   0   0
+    >                 0   0   0
+    >                 0   0   0
+    >    2   2   2    5   5   5   3   3   3   4   4   4
+    >    2   2   2    5   5   5   3   3   3   4   4   4
+    >    2   2   2    5   5   5   3   3   3   4   4   4
+    >                 1   1   1
+    >                 1   1   1
+    >                 1   1   1
+    > ```
 
     Attributes:
         state (ndarray): Current cube state represented as an array of sticker colors.
         GOAL (ndarray): Fixed goal state represented as an array of sticker colors.
         moves (list): List of possible cube moves (face and direction).
         allow_wide (bool): Flag indicating whether wide moves are allowed.
-        sticker_target (dict): A dictionary mapping move strings to lists of target sticker indices.
-        sticker_source (dict): A dictionary mapping move strings to lists of source sticker indices.
-        sticker_target_ix (ndarray): A 2D numpy array mapping move indices to target sticker indices for normal moves.
-        sticker_source_ix (ndarray): A 2D numpy array mapping move indices to source sticker indices for normal moves.
-        sticker_target_ix_wide (ndarray): A 2D numpy array mapping move indices to target sticker indices for wide moves.
-        sticker_source_ix_wide (ndarray): A 2D numpy array mapping move indices to source sticker indices for wide moves.
+        sticker_target (dict): A dictionary mapping move strings to lists of **target** sticker indices.
+        sticker_source (dict): A dictionary mapping move strings to lists of **source** sticker indices.
+        sticker_target_ix (ndarray): A 2D numpy array mapping move indices to **target** sticker indices for normal moves.
+        sticker_source_ix (ndarray): A 2D numpy array mapping move indices to **source** sticker indices for normal moves.
+        sticker_target_ix_wide (ndarray): A 2D numpy array mapping move indices to **target** sticker indices for wide moves.
+        sticker_source_ix_wide (ndarray): A 2D numpy array mapping move indices to **source** sticker indices for wide moves.
 
     """
 
@@ -497,7 +497,7 @@ class Cube3:
 
 class Dataset(torch.utils.data.Dataset):
     """
-    Pseudo dataset class to infinitely yield random scrambles
+    Pseudo dataset class to infinitely yield random scrambles.
 
     > ```python title="Example"
     > batch_size = 1024

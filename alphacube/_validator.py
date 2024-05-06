@@ -11,23 +11,22 @@ Validation Rules:
 - `beam_width` attribute must be a positive integer.
 - `extra_depths` attribute must be a non-negative integer.
 
-Usage Example:
+```python title="Example Usage"
+input_data = {
+    'format': 'moves',
+    'scramble': "R U R' U'",
+    'beam_width': 256,
+    'extra_depths': 2,
+    'ergonomic_bias': None
+}
+validated_input = Input(**input_data)
+```
 
-    ```python
-    input_data = {
-        'format': 'moves',
-        'scramble': "R U R' U'",
-        'beam_width': 256,
-        'extra_depths': 2,
-        'ergonomic_bias': None
-    }
-    validated_input = Input(**input_data)
-    ```
+:::note
 
-Note:
+The ergonomic bias information is optional and not strictly validated.
 
-    The ergonomic bias information is optional and not strictly validated.
-
+:::
 """
 
 import json

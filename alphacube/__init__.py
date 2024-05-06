@@ -25,7 +25,7 @@ def load(model_id: str = "small" if device.type == "cpu" else "large", *args, **
     Load the Rubik's Cube solver model.
 
     Args:
-        model_id: Identifier for the model variant to load ("small", "base", or "large"). Default to `small` on CPU; "large" on GPU/MPS.
+        model_id: Identifier for the model variant to load ("small", "base", or "large"). Default to `small` on CPU; `large` on GPU/MPS.
         *args: Additional positional arguments to configure model loading.
         **kwargs: Additional keyword arguments to configure model loading.
 
@@ -40,7 +40,7 @@ def solve(*args, **kwargs):
     Solve a Rubik's Cube puzzle using the loaded solver model.
 
     Args:
-        *args, **kwargs: Arguments to configure puzzle solving; passed down to `alphacube.solver.Solver.__call__()` and `alphacube.search.beam_search`.
+        *args, **kwargs: Arguments to configure puzzle solving; passed down to `alphacube.core.Solver.__call__()` and `alphacube.search.beam_search`.
 
     Returns:
         dict | None: A dictionary containing solutions and performance metrics. None if failed.
@@ -73,12 +73,12 @@ def cli():
 
     Arguments:
 
-    * `--model_id`, `-m` (str): Choose a specific model for solving (default: 'small').
-    * `--format`, `-f` (str): Specify the input format ('moves' or 'stickers').
-    * `--scramble`, `-s` (str): Define the initial cube state using either a sequence of moves or a stringify JSON dictionary.
-    * `--beam_width`, `-bw` (int): Set the beam width for search (default: 1024).
-    * `--extra_depths`, `-ex` (int): Specify additional depths for exploration (default: 0).
-    * `--verbose`, `-v`: Enable verbose output for debugging and tracking progress.
+    * `--model_id`/`-m` (str): Choose a specific model for solving (default: 'small' on CPU, otherwise `large`; another choice is `base``).
+    * `--format`/`-f` (str): Specify the input format ('moves' or 'stickers').
+    * `--scramble`/`-s` (str): Define the initial cube state using either a sequence of moves or a stringify JSON dictionary.
+    * `--beam_width`/`-bw` (int): Set the beam width for search (default: 1024).
+    * `--extra_depths`/`-ex` (int): Specify additional depths for exploration (default: 0).
+    * `--verbose`/`-v`: Enable verbose output for debugging and tracking progress.
 
     Returns:
         None
@@ -118,7 +118,7 @@ def cli():
         "--model_id",
         "-m",
         type=str,
-        default="small",
+        default="small" if device.type == "cpu" else "large",
         help="ID of the model to solve a given scramble with (`small`, `base`, or `large`)",
     )
     parser.add_argument(

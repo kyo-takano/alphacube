@@ -44,7 +44,7 @@ def set_verbose(loglevel=20):
     Set the verbosity level of the logger.
 
     Args:
-        loglevel (int): Logging level (e.g., logging.INFO, logging.DEBUG) to control the verbosity.
+        loglevel (int): Logging level (e.g., `logging.INFO`/`20`, `logging.DEBUG`/`10`) to control the verbosity.
 
     Returns:
         None

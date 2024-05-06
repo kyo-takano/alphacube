@@ -4,15 +4,6 @@ This module provides the core class `Solver`, which loads a mode and finds Rubik
 Class:
 
 - `Solver`: A class for managing Rubik's Cube configuration, solving model, and search function.
-
-Example:
-
-    ```python
-    from alphacube.solver import Solver
-    solver = Solver() # Assigned to `alphacube.solver` at the package level.
-    solver.load()
-    solution = solver(format='moves', scramble="R U R' U'", beam_width=1024)
-    ```
 """
 
 import torch
@@ -37,7 +28,13 @@ class Solver:
     evaluate_temporal_performance = evaluate_temporal_performance
 
     def load(
-        self, model_id, prefer_gpu=True, quantize_on_cpu=True, jit_mode=False, *args, **kwargs
+        self,
+        model_id: str = "small" if device.type == "cpu" else "large",
+        prefer_gpu: bool = True,
+        quantize_on_cpu: bool = True,
+        jit_mode: bool = False,
+        *args,
+        **kwargs,
     ):
         """
         Load the Rubik's Cube solver model and optimize it for CPU or GPU.

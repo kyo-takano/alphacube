@@ -4,11 +4,6 @@ This module provides a function to perform beam search and find solutions for a 
 Function:
     `beam_search`: Perform beam search to find solutions in a Rubik's Cube environment.
 
-:::note
-
-Using `numba.jit` actually *slows down* operations like `_get_prune_idx` and `_map_state`
-
-:::
 """
 
 import time
@@ -24,34 +19,6 @@ MAX_BATCH_SIZE = 2**16  # The maximum number of states forward-pass through a DN
 
 # Context: Use mixed precision training if GPU is available
 ctx = torch.autocast(device.type, dtype) if device.type != "cpu" else nullcontext()
-
-
-@torch.inference_mode()
-def predict(model, batch_x, beam_width, ergonomic_bias, env):
-    batch_x = torch.from_numpy(batch_x).to(device)
-    with ctx:
-        if batch_x.shape[0] < MAX_BATCH_SIZE:
-            logits = model(batch_x)
-        else:
-            logits = torch.cat(
-                [
-                    model(split)
-                    for split in torch.tensor_split(
-                        batch_x,
-                        batch_x.shape[0] // MAX_BATCH_SIZE + 1,
-                    )
-                ]
-            )
-    batch_logprob = logits.log_softmax(-1).detach().cpu().numpy()  # float32
-
-    # Apply ergonomic bias if given
-    if ergonomic_bias is not None:
-        if env.allow_wide:
-            batch_logprob = np.tile(batch_logprob, 2)
-        # batch_p = np.multiply(batch_p, ergonomic_bias)
-        batch_logprob += ergonomic_bias
-
-    return batch_logprob
 
 
 def beam_search(
@@ -74,13 +41,13 @@ def beam_search(
         max_depth (int): The maximum depth to search, should be equal to  or greater than God's Number (20 for Rubik's Cube in HTM).
 
     Returns:
-        dict | None: A dictionary with the following keys:
-            - 'solutions': A list of optimal or near-optimal solutions found during the search.
-            - 'num_nodes': The total number of nodes expanded during the search.
-            - 'time': The time taken (in seconds) to complete the search.
+        dict | None:
+            With at least one solution, a dictionary with the following keys:
+                1. `"solutions"`: A list of optimal or near-optimal solutions found during the search.
+                1. `"num_nodes"`: The total number of nodes expanded during the search.
+                1. `"time"`: The time taken (in seconds) to complete the search.
 
-            If no solutions are found, returns None.
-
+            Otherwise, `None`.
     """
 
     ## Setup ##
@@ -112,7 +79,7 @@ def beam_search(
 
         # Get a probability distribution for each candidate state
         batch_x = candidates["state"]
-        batch_logprob = predict(model, batch_x, beam_width, ergonomic_bias, env)
+        batch_logprob = predict(model, batch_x, ergonomic_bias, env)
         candidates = update_candidates(candidates, batch_logprob, env, depth, beam_width)
 
         # For record, add the number of current candidates to the node count
@@ -154,7 +121,17 @@ def beam_search(
 
 
 def _reflect_setup(ergonomic_bias, env):
-    # Initialize ergonomic bias if provided
+    """
+    Initialize ergonomic bias if provided.
+
+    Args:
+        ergonomic_bias (dict or None): A dictionary specifying ergonomic bias for moves, if available.
+        env (Cube3): The Rubik's Cube environment representing the scrambled state.
+
+    Returns:
+        ergonomic_bias (numpy.ndarray): The ergonomic bias for moves, if available.
+        env (Cube3): The Rubik's Cube environment representing the scrambled state.
+    """
     if ergonomic_bias is not None:
         # Zero-fill N/A and normalize to 1.
         ergonomic_bias = np.array(
@@ -180,7 +157,67 @@ def _reflect_setup(ergonomic_bias, env):
     return ergonomic_bias, env
 
 
+@torch.inference_mode()
+def predict(model, batch_x, ergonomic_bias, env):
+    """
+    Predict the probability distribution of next moves for every state.
+
+    Args:
+        model (torch.nn.Module): DNN used to predict the probability distribution of next moves for every state.
+        batch_x (numpy.ndarray): Batch of states.
+        ergonomic_bias (dict or None): A dictionary specifying ergonomic bias for moves, if available.
+        env (Cube3): The Rubik's Cube environment representing the scrambled state.
+
+    Returns:
+        batch_logprob (numpy.ndarray): The log probability of each move for each state.
+
+    :::note
+
+    Inference with [Automatic Mixed Prevision](https://pytorch.org/tutorials/recipes/recipes/amp_recipe.html) is slightly faster than
+    the simple half-precision (with `model.half()`) for some reasons.
+
+    :::
+    """
+    batch_x = torch.from_numpy(batch_x).to(device)
+    with ctx:
+        if batch_x.shape[0] < MAX_BATCH_SIZE:
+            logits = model(batch_x)
+        else:
+            logits = torch.cat(
+                [
+                    model(split)
+                    for split in torch.tensor_split(
+                        batch_x,
+                        batch_x.shape[0] // MAX_BATCH_SIZE + 1,
+                    )
+                ]
+            )
+    batch_logprob = logits.log_softmax(-1).detach().cpu().numpy()  # float32
+
+    # Apply ergonomic bias if given
+    if ergonomic_bias is not None:
+        if env.allow_wide:
+            batch_logprob = np.tile(batch_logprob, 2)
+        # batch_p = np.multiply(batch_p, ergonomic_bias)
+        batch_logprob += ergonomic_bias
+
+    return batch_logprob
+
+
 def update_candidates(candidates, batch_logprob, env, depth, beam_width):
+    """
+    Expand candidate paths with the predicted probabilities of next moves.
+
+    Args:
+        candidates (dict): A dictionary containing candidate paths, cumulative probabilities, and states.
+        batch_logprob (numpy.ndarray): The log probability of each move for each state.
+        env (Cube3): The Rubik's Cube environment representing the scrambled state.
+        depth (int): The current depth of the search.
+        beam_width (int): The maximum number of candidates to keep at each step of the search.
+
+    Returns:
+        candidates (dict): The updated dictionary containing candidate paths, cumulative probabilities, and states.
+    """
     # Accumulate the log-probability of each candidate path
     # Non-log equivalent:
     # `candidates["cumprob"] = np.multiply(batch_logprob, candidates["cumprob"][:, None]).reshape(-1)`
@@ -211,6 +248,23 @@ def update_candidates(candidates, batch_logprob, env, depth, beam_width):
 
 
 def _get_prune_idx(candidates_paths, allow_wide, depth):
+    """
+    Get the indices of candidates to prune based on previous moves.
+
+    Args:
+        candidates_paths (numpy.ndarray): The paths of candidate states.
+        allow_wide (bool): Whether to allow wide moves.
+        depth (int): The current depth of the search.
+
+    Returns:
+        prune_idx (numpy.ndarray): The indices of candidates to prune.
+
+    :::note
+
+    Using `numba.jit` actually *slows down* this function.
+
+    :::
+    """
     # Face indices
     mod_first_last_moves = candidates_paths[:, -1] // 3
     mod_second_last_moves = candidates_paths[:, -2] // 3
@@ -234,6 +288,17 @@ def _get_prune_idx(candidates_paths, allow_wide, depth):
 
 
 def _update_states(candidate_states, candidate_paths, env):
+    """
+    Update states based on the expanded paths.
+
+    Args:
+        candidate_states (numpy.ndarray): The states of candidate states.
+        candidate_paths (numpy.ndarray): The paths of candidate states.
+        env (Cube3): The Rubik's Cube environment representing the scrambled state.
+
+    Returns:
+        candidate_states (numpy.ndarray): The updated states of candidate states.
+    """
     if not env.allow_wide:
         logger.debug("[ sticker replacement ]")
         state_ix = (
@@ -291,6 +356,23 @@ def _update_states(candidate_states, candidate_paths, env):
 
 
 def _map_state(candidate_states, target_ix, source_ix):
+    """
+    Perform sticker replacement on the batch level.
+
+    Args:
+        candidate_states (numpy.ndarray): The states of candidate states.
+        target_ix (numpy.ndarray): The target indices for sticker replacement.
+        source_ix (numpy.ndarray): The source indices for sticker replacement.
+
+    Returns:
+        candidate_states (numpy.ndarray): The updated states of candidate states.
+
+    :::note
+
+    Using `numba.jit` actually *slows down* this function.
+
+    :::
+    """
     # Sticker replacement on the batch level (executed in the flattened view)
     flat_states = candidate_states.ravel()
     flat_states[target_ix.flatten()] = flat_states[source_ix.flatten()]
