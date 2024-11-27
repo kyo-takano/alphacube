@@ -124,7 +124,7 @@ def evaluate_temporal_performance(
 
     results = pd.DataFrame(columns=["beam_width", "t", "lmd"])
 
-    for beam_width in beam_width_space:  # 16 ~ 16384
+    for beam_width in beam_width_space.tolist():  # 16 ~ 16384
         for scramble in tqdm(
             dataset[:num_samples],
             desc=f"Solving... [model_id={solver.model_id}, {beam_width=}]",
@@ -185,4 +185,4 @@ def evaluate_temporal_performance(
     plt.savefig(os.path.join(cache_dir, "temporal_performance.png"))
     plt.show()
 
-    return lmd_t1
+    return float(lmd_t1)
