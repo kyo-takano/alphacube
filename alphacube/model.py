@@ -56,7 +56,7 @@ def load_model(
     else:
         logger.info(f"[grey50]Loading AlphaCube solver from cache at {model_path}", **logargs)
     try:
-        state_dict = torch.load(model_path, map_location=torch.device("cpu"), weights_only=True)
+        state_dict = torch.load(model_path, weights_only=True, map_location=torch.device("cpu"))
     except Exception as e:
         os.remove(model_path)
         raise ValueError(
