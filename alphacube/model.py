@@ -17,12 +17,12 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from . import logargs, logger
+from .utils import logger, logger_args, dtype, cache_dir
 
 
 def load_model(
     model_id="small",
-    cache_dir=os.path.expanduser("~/.cache/alphacube"),
+    cache_dir=cache_dir,
 ):
     """
     Load the pre-trained AlphaCube solver model.
@@ -41,7 +41,7 @@ def load_model(
 
         os.makedirs(cache_dir, exist_ok=True)
         model_url = os.path.join("https://storage.googleapis.com/alphacube/", model_id + ".zip")
-        logger.info(f"[grey50]Downloading AlphaCube ({model_id}) from {model_url}", **logargs)
+        logger.info(f"[grey50]Downloading AlphaCube ({model_id}) from {model_url}", **logger_args)
         with requests.get(model_url, stream=True) as r:
             total_size = int(r.headers.get("Content-Length"))
             with Progress() as progress:
@@ -52,19 +52,19 @@ def load_model(
                     for chunk in r.iter_content(chunk_size=8192):
                         output.write(chunk)
                         progress.update(task, advance=len(chunk))
-        logger.info(f"[grey50]Saved to {model_path}", **logargs)
+        logger.info(f"[grey50]Saved to {model_path}", **logger_args)
     else:
-        logger.info(f"[grey50]Loading AlphaCube solver from cache at {model_path}", **logargs)
+        logger.info(f"[grey50]Loading AlphaCube solver from cache at {model_path}", **logger_args)
     try:
         state_dict = torch.load(model_path, weights_only=True, map_location=torch.device("cpu"))
     except Exception as e:
         os.remove(model_path)
         raise ValueError(
-            "The model file appears to be broken and thus is deleted. "
-            f"This is most likely because of permission error (deleted):\n\t{e}"
+            f"Failed to load the model from '{model_path}'. The file is likely corrupt. "
+            f"The cached model has been deleted to enable a fresh download on the next run. Original error: {e}"
         )
 
-    if model_id in ["small", "base", "large"]:
+    if model_id in {"small", "base", "large"}:
         module = Model_v1
         embed_dim, num_layers = {
             "small": (1024, 7),
@@ -80,6 +80,7 @@ def load_model(
 
     model = module(embed_dim, num_layers)
     model.load_state_dict(state_dict)
+    model.to(dtype)
     return model
 
 
@@ -107,7 +108,7 @@ class Model_v1(nn.Module):
         Returns:
             torch.Tensor: Predicted distribution over possible solutions.
         """
-        x = F.one_hot(inputs, 6).reshape(-1, 324).float()
+        x = F.one_hot(inputs, 6).reshape(-1, 324).to(dtype)
         for layer in self.layers:
             x = layer(x)
         logits = x
@@ -153,7 +154,7 @@ class Model(nn.Module):
         Returns:
             torch.Tensor: Predicted distribution over possible solutions.
         """
-        x = F.one_hot(inputs, 6).reshape(-1, 324).float()
+        x = F.one_hot(inputs, 6).reshape(-1, 324).to(dtype)
         x = self.embedding(x)
         for layer in self.layers:
             x = layer(x)

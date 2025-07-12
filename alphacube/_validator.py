@@ -62,7 +62,7 @@ class Input(BaseModel):
         Raises:
             ValueError: If the format is not 'moves' or 'stickers'.
         """
-        if value not in ["moves", "stickers"]:
+        if value not in {"moves", "stickers"}:
             raise ValueError("Invalid input format. Must be either 'moves' or 'stickers'.")
         return value
 
@@ -124,6 +124,8 @@ class Input(BaseModel):
 
         format = values["format"]
         scramble = values["scramble"]
+        if scramble is None:
+            raise ValueError("`scramble` cannot be None.")
 
         if format == "moves":
             if isinstance(scramble, str):
