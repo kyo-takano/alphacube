@@ -7,31 +7,11 @@ AlphaCube is a powerful & flexible Rubik's Cube solver that extends [EfficientCu
 
 ## Use Cases
 
-- Solve any scrambled Rubik's Cube configuration with ease
-- Find efficient algorithms/solutions, optimizing for either computation speed or ergonomics of the move sequence
-- Incorporate into Rubik's Cube apps and tools to provide solving capabilities
-- Analyze and study the statistical properties and solution space of the Rubik's Cube puzzle
-- Illustrate AI/ML concepts to students. Topics include:
-  - discrete diffusion model
-  - self-supervised learning
-  - combinatorial search with probabilities
-
----
-
-## Table of Contents
-
-- [AlphaCube](#alphacube)
-  - [Use Cases](#use-cases)
-  - [Table of Contents](#table-of-contents)
-  - [Installation](#installation)
-  - [Usage](#usage)
-    - [Basic](#basic)
-    - [Better Solutions](#better-solutions)
-    - [Applying Ergonomic Bias](#applying-ergonomic-bias)
-    - [GPU Acceleration](#gpu-acceleration)
-  - [How It Works](#how-it-works)
-  - [Contributing](#contributing)
-  - [License](#license)
+-   Solve any scrambled Rubik's Cube configuration with ease.
+-   Find efficient algorithms, optimizing for either solution length or ergonomic move sequences.
+-   Incorporate solving capabilities into custom Rubik's Cube applications and tools.
+-   Analyze the statistical properties and solution space of the Rubik's Cube.
+-   Illustrate AI/ML concepts such as self-supervised learning and heuristic search.
 
 ## Installation
 
@@ -43,15 +23,17 @@ pip install -U alphacube
 
 ## Usage
 
-### Basic
+The first time you run `alphacube.load()`, the required model data will be downloaded and cached on your system for future use.
+
+### Basic Usage
 
 ```python
 import alphacube
 
-# Load a trained DNN (default: "small" on cpu, "large" on GPU)
+# Load a pre-trained model (defaults to "small" on CPU, "large" on GPU)
 alphacube.load()
 
-# Solve the cube using a given scramble sequence
+# Solve a scramble
 result = alphacube.solve(
     scramble="D U F2 L2 U' B2 F2 D L2 U R' F' D R' F' U L D' F' D R2",
     beam_width=1024, # Number of candidate solutions to consider at each depth of search
@@ -66,14 +48,14 @@ print(result)
 >     'solutions': [
 >         "D L D2 R' U2 D B' D' U2 B U2 B' U' B2 D B2 D' B2 F2 U2 F2"
 >     ],
->     'num_nodes': 19744, # Total search nodes explored
->     'time': 1.4068585219999659 # Wall-clock time in seconds
+>     'num_nodes': 19744,        # Total search nodes explored
+>     'time': 1.4068585219999659 # Time in seconds
 > }
 > ```
 
 ### Better Solutions
 
-Increasing `beam_width` explores more candidate solutions, producing shorter (better) solve sequences at the cost of increased computation:
+Increasing `beam_width` makes the search more exhaustive, yielding shorter solutions at the cost of extra compute:
 
 ```python
 result = alphacube.solve(
@@ -96,14 +78,42 @@ print(result)
 > }
 > ```
 
-`beam_width` values between 1024-65536 typically offer a good trade-off between solution quality and speed. Tune according to your needs.
+`beam_width` values between 1024 and 65536 typically offer a good trade-off between solution quality and speed. Tune according to your needs.
+
+### GPU Acceleration
+
+For maximal performance, use the `"large"` model on a GPU (or MPS if you have Mac).
+
+```python
+alphacube.load("large")
+result = alphacube.solve(
+    scramble="D U F2 L2 U' B2 F2 D L2 U R' F' D R' F' U L D' F' D R2",
+    beam_width=65536,
+)
+print(result)
+```
+
+> **Output**
+>
+> ```python
+> {
+>     'solutions': ["D F L' F' U2 B2 U F' L R2 B2 U D' F2 U2 R D'"],
+>     'num_nodes': 903448,
+>     'time': 20.46845487099995
+> }
+> ```
+
+> [!IMPORTANT]
+> When running on a CPU, the default `"small"` model is recommended. The `"base"` and `"large"` models are significantly slower without a GPU.
+
+Please refer to our [documentation](https://alphacube.dev/docs) for more, especially ["Getting Started"](https://alphacube.dev/docs/getting-started/index.html)
 
 ### Applying Ergonomic Bias
 
-The `ergonomic_bias` parameter lets you specify the desirability of each move type, influencing the solver to favor certain moves over others:
+The `ergonomic_bias` parameter can influence the solver to prefer certain types of moves, generating solutions that might be easier to perform.
 
 ```python
-# Desirability scale: 0 (lowest) to 1 (highest)
+# Define desirability for each move type (higher is more desirable)
 ergonomic_bias = {
     "U": 0.9,   "U'": 0.9,  "U2": 0.8,
     "R": 0.8,   "R'": 0.8,  "R2": 0.75,
@@ -141,48 +151,18 @@ print(result)
 > }
 > ```
 
-### GPU Acceleration
-
-For maximum performance, use the `"large"` model on a CUDA-enabled GPU (requires [PyTorch](https://pytorch.org/get-started/locally/)):
-
-```python
-alphacube.load("large")
-result = alphacube.solve(
-    scramble="D U F2 L2 U' B2 F2 D L2 U R' F' D R' F' U L D' F' D R2",
-    beam_width=65536,
-)
-print(result)
-```
-
-> **Output**
->
-> ```python
-> {
->     'solutions': ["D F L' F' U2 B2 U F' L R2 B2 U D' F2 U2 R D'"],
->     'num_nodes': 903448,
->     'time': 20.46845487099995
-> }
-> ```
-
-Using a GPU provides an order of magnitude speedup over CPUs, especially for larger models.
-
-> [!IMPORTANT]
-> When running AlphaCube _on a CPU_, it's generally recommended to stick with the `"small"` model, as the larger `"base"` and `"large"` models would take considerably more time to find solutions.
-
-Please refer to our [documentation](https://alphacube.dev/docs) for more, especially ["Getting Started"](https://alphacube.dev/docs/getting-started/index.html)
-
 ## How It Works
 
-At the heart of AlphaCube lies a deep learning method described in ["Self-Supervision is All You Need for Solving Rubik's Cube" (TMLR'23)](https://openreview.net/forum?id=bnBeNFB27b), the official code of which is also available as [EfficientCube](https://github.com/kyo-takano/efficientcube).
+At its core, AlphaCube uses the deep learning method from ["Self-Supervision is All You Need for Solving Rubik's Cube" (TMLR'23)](https://openreview.net/forum?id=bnBeNFB27b), the official code for which is available at [`kyo-takano/efficientcube`](https://github.com/kyo-takano/efficientcube).
 
-The 3 provided models (`"small"`, `"base"`, and `"large"`) are **_compute-optimally trained_** in the Half-Turn Metric, This means the model sizes are scaled in tandem with the amount of training data to maximize prediction accuracy for a given computational budget. See Section 7 of the above-mentioned paper for details.
+The provided models (`"small"`, `"base"`, and `"large"`) are **compute-optimally trained** in the Half-Turn Metric. This means model size and training data were scaled together to maximize prediction accuracy for a given computational budget, as detailed in the paper.
 
 > [!NOTE]
-> **📖 Read more: ["How It Works"](https://alphacube.dev/docs/how-it-works/index.html)**
+> **📖 Read more: ["How It Works"](https://alphacube.dev/docs/how-it-works)** on our documentation site.
 
 ## Contributing
 
-You are more than welcome to collaborate on AlphaCube. Please read our [Contributing Guide](https://github.com/kyo-takano/alphacube/blob/main/CONTRIBUTING.md) to get started.
+You are welcome to collaborate on AlphaCube! Please read our [Contributing Guide](https://github.com/kyo-takano/alphacube/blob/main/CONTRIBUTING.md) to get started.
 
 ## License
 

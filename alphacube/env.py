@@ -11,8 +11,8 @@ import os
 import random
 
 import numpy as np
+import rich
 import torch
-from rich import print as rprint
 
 
 class Cube3:
@@ -68,13 +68,13 @@ class Cube3:
         GOAL (ndarray): Fixed goal state represented as an array of sticker colors.
         moves (list): List of possible cube moves (face and direction).
         allow_wide (bool): Flag indicating whether wide moves are allowed.
+        max_depth (int): The maximum scramble depth for the data generator.
         sticker_target (dict): A dictionary mapping move strings to lists of **target** sticker indices.
         sticker_source (dict): A dictionary mapping move strings to lists of **source** sticker indices.
         sticker_target_ix (ndarray): A 2D numpy array mapping move indices to **target** sticker indices for normal moves.
         sticker_source_ix (ndarray): A 2D numpy array mapping move indices to **source** sticker indices for normal moves.
         sticker_target_ix_wide (ndarray): A 2D numpy array mapping move indices to **target** sticker indices for wide moves.
         sticker_source_ix_wide (ndarray): A 2D numpy array mapping move indices to **source** sticker indices for wide moves.
-
     """
 
     def __init__(self, allow_wide=True, max_depth=20):
@@ -125,8 +125,8 @@ class Cube3:
         state_by_face = str(state_by_face)
         for i, color in zip(range(6), palette):
             state_by_face = state_by_face.replace(str(i), f"[{color}]{i}[/{color}]")
-        rprint(state_by_face)
-        rprint()
+        rich.print(state_by_face)
+        rich.print()
 
     def validate(self, state=None, centered=True):
         """
@@ -145,17 +145,21 @@ class Cube3:
 
         if centered and not np.all(centers == self.CENTERS_HAT):
             # Must be [0, 1, 2, 3, 4, 5]
-            raise ValueError("State is not *centered*.")
+            raise ValueError("Invalid cube state: Centers are not in their solved positions.")
         if not centered and np.all(centers == self.CENTERS_HAT):
             # Must NOT be [0, 1, 2, 3, 4, 5]
-            raise ValueError("State is unintendedly *centered*.")
+            raise ValueError(
+                "Invalid cube state: Expected a non-centered state, but centers are in solved positions."
+            )
 
         if not np.all(np.sort(centers) == self.CENTERS_HAT):
             # Must be [0, 1, 2, 3, 4, 5] when sorted
             self.show(flat=True)
-            raise ValueError("Centers are not in the right order.")
+            raise ValueError(
+                "Invalid cube state: The set of center colors is incorrect. Expected one of each color index (0-5)."
+            )
         elif not np.all(np.sort(self.state) == self.GOAL):
-            rprint(np.sort(self.state).reshape(6, 9), "!= env.goal")
+            rich.print(np.sort(self.state).reshape(6, 9), "!= env.goal")
             raise ValueError("Inconsistent number of colors.")
 
     def reset(self):
@@ -190,10 +194,12 @@ class Cube3:
 
     def finger_ix(self, ix):
         """
-        Apply a single move using move index for faster execution.
+        Apply a single move using its index for faster execution than `.finger`.
+        Checks if the move index corresponds to a normal move (ix < 18) or a wide move and applies
+        the state change using pre-calculated index arrays.
 
         Args:
-            ix (int): Index of the move.
+            ix (int): Index of the move to apply.
         """
         if ix < 18:
             self.state[self.sticker_target_ix[ix]] = self.state[self.sticker_source_ix[ix]]
@@ -215,6 +221,18 @@ class Cube3:
             self.finger(m)
 
     def __iter__(self):
+        """
+        Create an infinite generator of scrambled states and solution sequences.
+
+        This method is intended for model training. On each iteration, it generates
+        a new random scramble of `max_depth` moves, avoiding trivial move sequences.
+        It yields the history of states and the corresponding move that led to each state.
+
+        Yields:
+            tuple[np.ndarray, np.ndarray]: A tuple containing:
+                - X (np.ndarray): A (max_depth, 54) array of cube states.
+                - y (np.ndarray): A (max_depth,) array of move indices that generated the states.
+        """
         assert not self.allow_wide
         while True:
             X = np.zeros((self.max_depth, 54), dtype=int)
@@ -250,139 +268,25 @@ class Cube3:
         """
         self.sticker_target, self.sticker_source = dict(), dict()
 
+        # fmt: off
         self.sticker_replacement = {
             # Sticker A is replaced by another sticker at index B -> {A: B}
             "U": {
-                0: 6,
-                1: 3,
-                2: 0,
-                3: 7,
-                5: 1,
-                6: 8,
-                7: 5,
-                8: 2,
-                20: 47,
-                23: 50,
-                26: 53,
-                29: 38,
-                32: 41,
-                35: 44,
-                38: 20,
-                41: 23,
-                44: 26,
-                47: 29,
-                50: 32,
-                53: 35,
+                0: 6, 1: 3, 2: 0, 3: 7, 5: 1, 6: 8, 7: 5, 8: 2, 20: 47, 23: 50, 26: 53, 29: 38, 32: 41, 35: 44, 38: 20, 41: 23, 44: 26, 47: 29, 50: 32, 53: 35,
             },
-            "D": {
-                9: 15,
-                10: 12,
-                11: 9,
-                12: 16,
-                14: 10,
-                15: 17,
-                16: 14,
-                17: 11,
-                18: 36,
-                21: 39,
-                24: 42,
-                27: 45,
-                30: 48,
-                33: 51,
-                36: 27,
-                39: 30,
-                42: 33,
-                45: 18,
-                48: 21,
-                51: 24,
+            "D": {9: 15, 10: 12, 11: 9, 12: 16, 14: 10, 15: 17, 16: 14, 17: 11, 18: 36, 21: 39, 24: 42, 27: 45, 30: 48, 33: 51, 36: 27, 39: 30, 42: 33, 45: 18, 48: 21, 51: 24,
             },
             "L": {
-                0: 44,
-                1: 43,
-                2: 42,
-                9: 45,
-                10: 46,
-                11: 47,
-                18: 24,
-                19: 21,
-                20: 18,
-                21: 25,
-                23: 19,
-                24: 26,
-                25: 23,
-                26: 20,
-                42: 11,
-                43: 10,
-                44: 9,
-                45: 0,
-                46: 1,
-                47: 2,
+                0: 44, 1: 43, 2: 42, 9: 45, 10: 46, 11: 47, 18: 24, 19: 21, 20: 18, 21: 25, 23: 19, 24: 26, 25: 23, 26: 20, 42: 11, 43: 10, 44: 9, 45: 0, 46: 1, 47: 2,
             },
             "R": {
-                6: 51,
-                7: 52,
-                8: 53,
-                15: 38,
-                16: 37,
-                17: 36,
-                27: 33,
-                28: 30,
-                29: 27,
-                30: 34,
-                32: 28,
-                33: 35,
-                34: 32,
-                35: 29,
-                36: 8,
-                37: 7,
-                38: 6,
-                51: 15,
-                52: 16,
-                53: 17,
+                6: 51, 7: 52, 8: 53, 15: 38, 16: 37, 17: 36, 27: 33, 28: 30, 29: 27, 30: 34, 32: 28, 33: 35, 34: 32, 35: 29, 36: 8, 37: 7, 38: 6, 51: 15, 52: 16, 53: 17,
             },
             "B": {
-                2: 35,
-                5: 34,
-                8: 33,
-                9: 20,
-                12: 19,
-                15: 18,
-                18: 2,
-                19: 5,
-                20: 8,
-                33: 9,
-                34: 12,
-                35: 15,
-                36: 42,
-                37: 39,
-                38: 36,
-                39: 43,
-                41: 37,
-                42: 44,
-                43: 41,
-                44: 38,
+                2: 35, 5: 34, 8: 33, 9: 20, 12: 19, 15: 18, 18: 2, 19: 5, 20: 8, 33: 9, 34: 12, 35: 15, 36: 42, 37: 39, 38: 36, 39: 43, 41: 37, 42: 44, 43: 41, 44: 38,
             },
             "F": {
-                0: 24,
-                3: 25,
-                6: 26,
-                11: 27,
-                14: 28,
-                17: 29,
-                24: 17,
-                25: 14,
-                26: 11,
-                27: 6,
-                28: 3,
-                29: 0,
-                45: 51,
-                46: 48,
-                47: 45,
-                48: 52,
-                50: 46,
-                51: 53,
-                52: 50,
-                53: 47,
+                0: 24, 3: 25, 6: 26, 11: 27, 14: 28, 17: 29, 24: 17, 25: 14, 26: 11, 27: 6, 28: 3, 29: 0, 45: 51, 46: 48, 47: 45, 48: 52, 50: 46, 51: 53, 52: 50, 53: 47,
             },
         }
         if self.allow_wide:
@@ -391,49 +295,17 @@ class Cube3:
                 {
                     # Definition: https://jperm.net/3x3/moves
                     "M": {
-                        49: 4,
-                        4: 40,
-                        40: 13,
-                        13: 49,
-                        50: 5,
-                        5: 39,
-                        39: 14,
-                        14: 50,
-                        48: 3,
-                        3: 41,
-                        41: 12,
-                        12: 48,
+                        49: 4, 4: 40, 40: 13, 13: 49, 50: 5, 5: 39, 39: 14, 14: 50, 48: 3, 3: 41, 41: 12, 12: 48,
                     },
                     "S": {
-                        31: 4,
-                        4: 22,
-                        22: 13,
-                        13: 31,
-                        32: 1,
-                        1: 21,
-                        21: 16,
-                        16: 32,
-                        30: 7,
-                        7: 23,
-                        23: 10,
-                        10: 30,
+                        31: 4, 4: 22, 22: 13, 13: 31, 32: 1, 1: 21, 21: 16, 16: 32, 30: 7, 7: 23, 23: 10, 10: 30,
                     },
                     "E": {
-                        49: 22,
-                        22: 40,
-                        40: 31,
-                        31: 49,
-                        46: 19,
-                        19: 37,
-                        37: 28,
-                        28: 46,
-                        52: 25,
-                        25: 43,
-                        43: 34,
-                        34: 52,
+                        49: 22, 22: 40, 40: 31, 31: 49, 46: 19, 19: 37, 37: 28, 28: 46, 52: 25, 25: 43, 43: 34, 34: 52,
                     },
                 }
             )
+            # fmt: on
             # Wide moves
             self.sticker_replacement.update(
                 {

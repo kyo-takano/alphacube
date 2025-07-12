@@ -1,5 +1,17 @@
+"""
+Utilities for the AlphaCube Package.
+
+This module provides common utilities used across the AlphaCube package, including:
+- A pre-configured `rich` logger for styled console output.
+- Automatic detection of the best available `torch.device` (CUDA, MPS, or CPU) and
+  the corresponding `torch.dtype`.
+- Utility functions for controlling verbosity (`set_verbose`), listing available
+  models (`list_models`), and defining the global cache directory.
+"""
+
 from __future__ import annotations  # PEP 604 backport
 
+import os
 import torch
 
 import logging
@@ -23,7 +35,7 @@ logging.basicConfig(
 )
 logging.captureWarnings(True)
 logger = logging.getLogger("alphacube")
-logargs = dict(extra={"markup": True})
+logger_args = dict(extra={"markup": True})
 
 
 if torch.cuda.is_available():
@@ -52,4 +64,16 @@ def set_verbose(loglevel=20):
     logger.setLevel(loglevel)
 
 
+def list_models():
+    """
+    List the available model IDs.
+
+    Returns:
+        list: A list of available model IDs.
+    """
+    return ["small", "base", "large"]
+
+
 set_verbose(loglevel=30)  # default to WARNING
+
+cache_dir = os.path.expanduser("~/.cache/alphacube")

@@ -8,33 +8,34 @@ Class:
 
 import torch
 
-from . import logger, logargs, device
-
 from .env import Cube3
 from .model import load_model
 from .search import beam_search
-from ._evaluator import evaluate_search_efficiency, evaluate_temporal_performance
+from .utils import logger, logger_args, device, cache_dir
+from ._evaluator import benchmark, evaluate_temporal_performance
 
 
 class Solver:
     """
     A solver class for managing environment, model, and search configurations.
+
+    This class orchestrates the cube environment, the neural network model, and the
+    beam search algorithm to find solutions.
+
     Methods:
     - `load`: Load the solver model and optimize it for CPU or GPU.
-    - `__call__`: Set up the cube state and pass it for solution using beam search.
+    - `__call__` (or `solve`): Set up the cube state and find solutions using beam search.
+    - `benchmark`: Evaluate the solver's search efficiency.
+    - `evaluate_temporal_performance`: (Deprecated) Evaluate solution length vs. time.
     """
-
-    evaluate_search_efficiency = evaluate_search_efficiency
-    evaluate_temporal_performance = evaluate_temporal_performance
 
     def load(
         self,
-        model_id: str = "small" if device.type == "cpu" else "large",
+        model_id: str = dict(cpu="small").get(device.type, "large"),
         prefer_gpu: bool = True,
         quantize_on_cpu: bool = True,
         jit_mode: bool = False,
-        *args,
-        **kwargs,
+        cache_dir: str = cache_dir,
     ):
         """
         Load the Rubik's Cube solver model and optimize it for CPU or GPU.
@@ -44,23 +45,24 @@ class Solver:
             prefer_gpu (bool): Whether to prefer GPU if available.
             quantize_on_cpu (bool): Whether to quantize the model for CPU optimization.
             jit_mode (bool): Whether to enable JIT mode for potentially faster execution.
-            *args: Additional arguments for model loading.
-            **kwargs: Additional keyword arguments for model loading and optimization.
+            cache_dir (str): Directory to cache the model files.
 
         Returns:
             None
         """
         # Load the model (download if not yet)
         self.model_id = model_id
-        self.model = load_model(self.model_id, *args, **kwargs)
+        self.model = load_model(self.model_id, cache_dir=cache_dir)
         if prefer_gpu and device.type != "cpu":
-            logger.info(f"[grey50]Running on {device.type.upper()}", **logargs)
+            logger.info(f"[grey50]Running on {device.type.upper()}", **logger_args)
             self.model.to(device)
         else:
-            logger.info("[grey50]Running on CPU (no GPU found)", **logargs)
+            logger.info("[grey50]Running on CPU (no GPU found)", **logger_args)
             if quantize_on_cpu:
                 logger.info(
-                    "[grey50]Quantizing the model -- roughly 3x faster [italic]on CPU", **logargs
+                    "[grey50]Quantizing model for CPU execution. "
+                    "This should provide a significant speedup (~3x).",
+                    **logger_args,
                 )
                 self.model = torch.ao.quantization.quantize_dynamic(
                     self.model, {torch.nn.Linear}, dtype=torch.qint8
@@ -68,26 +70,43 @@ class Solver:
 
         if jit_mode:
             logger.info(
-                "[grey50]JIT-mode enabled -- [italic]potentially[/italic] faster than eager execution",
-                **logargs,
+                "[grey50]JIT compilation enabled. This may improve performance over standard eager execution.",
+                **logger_args,
             )
             self.model = torch.jit.script(self.model)
 
-        logger.info("[cyan]Initialized AlphaCube solver.", **logargs)
+        logger.info("[cyan]Initialized AlphaCube solver.", **logger_args)
 
-    def __call__(self, scramble, format="moves", allow_wide=True, **kwargs):
+    def __call__(
+        self,
+        scramble,
+        format="moves",
+        allow_wide=True,
+        # **kwargs,
+        beam_width: int = 1024,
+        extra_depths: int = 0,
+        ergonomic_bias: dict | None = None,
+    ):
         """
-        Set up the cube state from `format` and `scramble` and pass it to `search.beam_search` together with `**kwargs`.
+        Set up the cube state and find solutions using beam search.
 
         Args:
-            format (str): Input format of the scramble: either "moves" or "stickers".
-            scramble (list): A sequence of moves/stickers representing the initial state of the Rubik's Cube.
-            allow_wide (bool): Whether wide moves are allowed.
-            **kwargs: Keyword arguments to be passed to `beam_search`.
+            scramble (list or str): A sequence of moves or a sticker representation
+                of the initial cube state.
+            format (str): Input format of the scramble: "moves" or "stickers".
+            allow_wide (bool): Whether to allow wide moves in the search space.
+                Note: This is often controlled automatically by `ergonomic_bias`.
+            beam_width (int): The beam width for the search algorithm.
+            extra_depths (int): Number of extra depths to search after finding a solution.
+            ergonomic_bias (dict, optional): A dictionary to bias the search towards
+                certain moves based on ergonomic preference.
 
         Returns:
-            solutions (dict | None): Dictionary containing the solution response from `search.beam_search`.
+            dict | None: A dictionary containing the solution(s) and search metadata,
+                        or None if no solution is found.
         """
+        if not hasattr(self, "model"):
+            raise ValueError("Model not loaded. Call `load` first.")
 
         env = Cube3(allow_wide=allow_wide)
 
@@ -104,4 +123,17 @@ class Solver:
         if env.is_solved():
             return ValueError("Looks like it is already solved.")
 
-        return beam_search(env, self.model, **kwargs)
+        return beam_search(
+            env,
+            self.model,
+            # **kwargs
+            beam_width=beam_width,
+            extra_depths=extra_depths,
+            ergonomic_bias=ergonomic_bias,
+        )
+
+    # fmt:off
+    benchmark = evaluate_search_efficiency = benchmark    # A shortcut method `alphacube.solver.benchmark(...)` functionally equivalent to `alphacube._evaluator.benchmark(alphacube.solver, ...)`. `evaluate_search_efficiency` redirects to this method for backward compatibility.
+    # fmt:on
+
+    evaluate_temporal_performance = evaluate_temporal_performance  # Deprecated. A shortcut `alphacube._evaluator.evaluate_temporal_performance`

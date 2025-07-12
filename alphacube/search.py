@@ -9,16 +9,10 @@ Function:
 import time
 import numpy as np
 import torch
-from rich import print as rprint
-from contextlib import nullcontext
 
-from . import device, dtype, logger
+from .utils import logger, device
 
 MAX_BATCH_SIZE = 2**16  # The maximum number of states forward-pass through a DNN at a time.
-
-
-# Context: Use mixed precision training if GPU is available
-ctx = torch.autocast(device.type, dtype) if device.type != "cpu" else nullcontext()
 
 
 def beam_search(
@@ -67,16 +61,13 @@ def beam_search(
 
     # Debug utilities
 
-    if logger.level < 20:
+    if logger.level <= 10:
         logger.debug(f"{env.moves=}")
         logger.debug("env.state:")
         env.show(flat=True)
 
     ## Execute ##
     for depth in range(max_depth):
-        if logger.level <= 20:
-            rprint(f"Current depth: {depth}", end="\r")
-
         # Get a probability distribution for each candidate state
         batch_x = candidates["state"]
         batch_logprob = predict(model, batch_x, ergonomic_bias, env)
@@ -108,8 +99,6 @@ def beam_search(
             solutions["time"] = time.monotonic() - solutions["time"]
             # Convert each list of solutions to string notation
             solutions["solutions"] = [" ".join(path) for path in solutions["solutions"]]
-            if logger.level <= 20:
-                rprint()  # To avoid conflict with the current-depth log
             return solutions
 
         # Otherwise, dedupe & pass to the next depth
@@ -139,7 +128,8 @@ def _reflect_setup(ergonomic_bias, env):
         ).reshape(1, -1)
         if np.all(ergonomic_bias[:, 18:] == 0):
             logger.info(
-                "All wide moves (e.g., r2, f2) seem to be 0 â”€â”€ starting to solve only with flat moves..."
+                "Ergonomic bias for all wide moves is zero. "
+                "Disabling wide moves and using a standard-move search space."
             )
             # If wide moves are disabled, switch to flat-move mode
             env.allow_wide = False
@@ -179,19 +169,19 @@ def predict(model, batch_x, ergonomic_bias, env):
     :::
     """
     batch_x = torch.from_numpy(batch_x).to(device)
-    with ctx:
-        if batch_x.shape[0] < MAX_BATCH_SIZE:
-            logits = model(batch_x)
-        else:
-            logits = torch.cat(
-                [
-                    model(split)
-                    for split in torch.tensor_split(
-                        batch_x,
-                        batch_x.shape[0] // MAX_BATCH_SIZE + 1,
-                    )
-                ]
-            )
+    # with ctx:
+    if batch_x.shape[0] < MAX_BATCH_SIZE:
+        logits = model(batch_x)
+    else:
+        logits = torch.cat(
+            [
+                model(split)
+                for split in torch.tensor_split(
+                    batch_x,
+                    batch_x.shape[0] // MAX_BATCH_SIZE + 1,
+                )
+            ]
+        )
     batch_logprob = logits.log_softmax(-1).detach().cpu().numpy()  # float32
 
     # Apply ergonomic bias if given

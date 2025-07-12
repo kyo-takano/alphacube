@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=80.9"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
@@ -7,7 +7,7 @@ packages = ["alphacube"]
 
 [project]
 name = "alphacube"
-version = "0.1.4"
+version = "0.1.5"
 description = "A powerful & flexible Rubik's Cube solver"
 readme = "README.md"
 requires-python = ">=3.6"
@@ -35,6 +35,12 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
 ]
+
+[project.optional-dependencies]
+eval = ["matplotlib", "pandas", "scikit-learn"]
+test = ["pytest>=7.0"]
+
+
 [project.urls]
 "Documentation" = "https://alphacube.dev/docs/index.html"
 "Source" = "https://github.com/kyo-takano/alphacube"
