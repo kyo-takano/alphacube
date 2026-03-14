@@ -6,12 +6,10 @@ Class:
 - `Solver`: A class for managing Rubik's Cube configuration, solving model, and search function.
 """
 
-import torch
-
 from .env import Cube3
 from .model import load_model
 from .search import beam_search
-from .utils import logger, logger_args, device, cache_dir
+from .utils import logger, device, cache_dir
 from ._evaluator import benchmark, evaluate_temporal_performance
 
 
@@ -32,50 +30,45 @@ class Solver:
     def load(
         self,
         model_id: str = dict(cpu="small").get(device.type, "large"),
-        prefer_gpu: bool = True,
         quantize_on_cpu: bool = True,
-        jit_mode: bool = False,
         cache_dir: str = cache_dir,
+        **kwargs_muted,
     ):
         """
         Load the Rubik's Cube solver model and optimize it for CPU or GPU.
 
         Args:
             model_id (str): Identifier for the model variant to load ("small", "base", or "large").
-            prefer_gpu (bool): Whether to prefer GPU if available.
             quantize_on_cpu (bool): Whether to quantize the model for CPU optimization.
-            jit_mode (bool): Whether to enable JIT mode for potentially faster execution.
             cache_dir (str): Directory to cache the model files.
 
         Returns:
             None
         """
+        if "jit_mode" in kwargs_muted:
+            logger.warning(
+                "The argument `jit_mode` has been muted due to the compilation overhead. "
+                "If you still wish to compile the model, we recommend executing something like `torch.compile(alphacube.solver.model)`"
+            )
+        if "prefer_gpu" in kwargs_muted:
+            logger.warning(
+                "The argument `prefer_gpu` has been deprecated due to its unnecessary redundancy. "
+                "If you are using accelerator and still want to compute on GPU, please move the model by calling `alphacube.solver.model.to('cpu')`"
+            )
+
         # Load the model (download if not yet)
         self.model_id = model_id
-        self.model = load_model(self.model_id, cache_dir=cache_dir)
-        if prefer_gpu and device.type != "cpu":
-            logger.info(f"[grey50]Running on {device.type.upper()}", **logger_args)
-            self.model.to(device)
+        self.model = load_model(
+            self.model_id, quantize=quantize_on_cpu and device.type == "cpu", cache_dir=cache_dir
+        )
+
+        if device.type == "cpu":
+            logger.info("[grey50]Running on CPU (no accelerators found)")
         else:
-            logger.info("[grey50]Running on CPU (no GPU found)", **logger_args)
-            if quantize_on_cpu:
-                logger.info(
-                    "[grey50]Quantizing model for CPU execution. "
-                    "This should provide a significant speedup (~3x).",
-                    **logger_args,
-                )
-                self.model = torch.ao.quantization.quantize_dynamic(
-                    self.model, {torch.nn.Linear}, dtype=torch.qint8
-                )
+            logger.info(f"[grey50]Running on {device.type.upper()}")
+            self.model.to(device)
 
-        if jit_mode:
-            logger.info(
-                "[grey50]JIT compilation enabled. This may improve performance over standard eager execution.",
-                **logger_args,
-            )
-            self.model = torch.jit.script(self.model)
-
-        logger.info("[cyan]Initialized AlphaCube solver.", **logger_args)
+        logger.info("[cyan]Initialized AlphaCube solver.")
 
     def __call__(
         self,

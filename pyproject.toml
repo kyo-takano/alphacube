@@ -7,7 +7,7 @@ packages = ["alphacube"]
 
 [project]
 name = "alphacube"
-version = "0.1.5"
+version = "0.1.6"
 description = "A powerful & flexible Rubik's Cube solver"
 readme = "README.md"
 requires-python = ">=3.6"
