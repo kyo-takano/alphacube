@@ -17,13 +17,10 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from .utils import logger, logger_args, dtype, cache_dir
+from .utils import logger, dtype, cache_dir, BASE_URL
 
 
-def load_model(
-    model_id="small",
-    cache_dir=cache_dir,
-):
+def load_model(model_id="small", quantize=False, cache_dir=cache_dir):
     """
     Load the pre-trained AlphaCube solver model.
 
@@ -40,8 +37,8 @@ def load_model(
         from rich.progress import Progress
 
         os.makedirs(cache_dir, exist_ok=True)
-        model_url = os.path.join("https://storage.googleapis.com/alphacube/", model_id + ".zip")
-        logger.info(f"[grey50]Downloading AlphaCube ({model_id}) from {model_url}", **logger_args)
+        model_url = os.path.join(BASE_URL, model_id + ".zip")
+        logger.info(f"[grey50]Downloading AlphaCube ({model_id}) from {model_url}")
         with requests.get(model_url, stream=True) as r:
             total_size = int(r.headers.get("Content-Length"))
             with Progress() as progress:
@@ -52,9 +49,9 @@ def load_model(
                     for chunk in r.iter_content(chunk_size=8192):
                         output.write(chunk)
                         progress.update(task, advance=len(chunk))
-        logger.info(f"[grey50]Saved to {model_path}", **logger_args)
+        logger.info(f"[grey50]Saved to {model_path}")
     else:
-        logger.info(f"[grey50]Loading AlphaCube solver from cache at {model_path}", **logger_args)
+        logger.info(f"[grey50]Loading AlphaCube solver from cache at {model_path}")
     try:
         state_dict = torch.load(model_path, weights_only=True, map_location=torch.device("cpu"))
     except Exception as e:
@@ -80,7 +77,22 @@ def load_model(
 
     model = module(embed_dim, num_layers)
     model.load_state_dict(state_dict)
+
+    if quantize:
+        logger.info(
+            "[grey50]Quantizing model for CPU execution. "
+            "This should provide a significant speedup (~3x)."
+        )
+        # Quantize layers except embedding (inputs are mostly zeros) and head (sensitive)
+        for i in range(1, len(model.layers) - 1):
+            model.layers[i] = torch.ao.quantization.quantize_dynamic(
+                model.layers[i],
+                {torch.nn.Linear},
+                dtype=torch.qint8,
+            )
+
     model.to(dtype)
+
     return model
 
 
@@ -117,16 +129,12 @@ class Model_v1(nn.Module):
 
 class Model(nn.Module):
     """
-    An architecture better than `Model`.
-
-    **Changes**:
-    - Remove ReLU activation from the first layer (`embedding`), which had the dying ReLU problem.
-    - Following the recent convention, the `embedding` layer does *not* count as one hidden layer.
+    A semantically cleaner equivalent of `Model_v1` with an explicit initialization.
     """
 
     def __init__(self, hidden_size=4096, num_hidden_layers=8, input_dim=324, output_dim=18):
         super(Model, self).__init__()
-        self.embedding = nn.Linear(input_dim, hidden_size, bias=False)
+        self.embedding = LinearBlock(input_dim, hidden_size, bias=False)
         self.layers = nn.ModuleList(
             [LinearBlock(hidden_size, hidden_size) for i in range(num_hidden_layers)]
         )
@@ -169,9 +177,9 @@ class LinearBlock(nn.Module):
     This block consists of a linear layer followed by ReLU activation and batch normalization.
     """
 
-    def __init__(self, input_prev, embed_dim):
-        super(LinearBlock, self).__init__()
-        self.fc = nn.Linear(input_prev, embed_dim)
+    def __init__(self, input_prev, embed_dim, bias=True):
+        super().__init__()
+        self.fc = nn.Linear(input_prev, embed_dim, bias=bias)
         self.bn = nn.BatchNorm1d(embed_dim)
 
     def forward(self, inputs):

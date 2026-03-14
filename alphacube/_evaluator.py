@@ -17,7 +17,7 @@ import numpy as np
 import requests
 from tqdm import tqdm
 
-from .utils import logger, logger_args, device, cache_dir
+from .utils import logger, device, cache_dir, BASE_URL
 
 
 # --- Handle Optional Dependencies ---
@@ -52,14 +52,12 @@ def get_dataset(filename="deepcubea-dataset--cube3.json", cache_dir=cache_dir):
     filepath = os.path.join(cache_dir, filename)
     if not os.path.exists(filepath):
         os.makedirs(cache_dir, exist_ok=True)
-        with requests.get(
-            os.path.join("https://storage.googleapis.com/alphacube/", filename), stream=True
-        ) as r:
+        with requests.get(os.path.join(BASE_URL, filename), stream=True) as r:
             with open(filepath, "wb") as output:
                 for chunk in r.iter_content(chunk_size=8192):
                     output.write(chunk)
 
-    logger.info(f"[grey50]Saved to {filepath}", **logger_args)
+    logger.info(f"[grey50]Saved to {filepath}")
     try:
         with open(filepath) as f:
             dataset = json.load(f)
@@ -103,6 +101,7 @@ def evaluate_search_efficiency(
         "`evaluate_search_efficiency` is deprecated and has been renamed to `benchmark`. "
         "Please use `solver.benchmark()` instead. This alias will be removed in a future version.",
         DeprecationWarning,
+        stacklevel=2,
     )
     dataset = get_dataset()
 
@@ -157,7 +156,9 @@ def evaluate_temporal_performance(
         raise ImportError(_EVAL_DEPS_ERROR_MSG)
 
     warnings.warn(
-        "`evaluate_temporal_performance` is deprecated and will be removed in future versions. "
+        "`evaluate_temporal_performance` is deprecated and will be removed in future versions. ",
+        DeprecationWarning,
+        stacklevel=2,
     )
 
     dataset = get_dataset()

@@ -26,16 +26,16 @@ logging.getLogger("matplotlib").setLevel(logging.WARNING)
 warnings.filterwarnings("once", category=RuntimeWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 
-logging.basicConfig(
-    level=20,
-    format="%(message)s",
-    datefmt="[%X]",
-    handlers=[RichHandler(console=Console(stderr=True), markup=True)],
-    force=True,
-)
-logging.captureWarnings(True)
 logger = logging.getLogger("alphacube")
-logger_args = dict(extra={"markup": True})
+logger.propagate = False
+rh = RichHandler(console=Console(stderr=True), markup=True)
+rh.setLevel(logging.INFO)  # 20
+rh.setFormatter(logging.Formatter(fmt="%(message)s", datefmt="[%X]"))
+logger.addHandler(rh)
+logger.setLevel(logging.INFO)
+
+
+logger_args = dict(extra={"markup": True})  # Kept for backward compatibility
 
 
 if torch.cuda.is_available():
@@ -77,3 +77,4 @@ def list_models():
 set_verbose(loglevel=30)  # default to WARNING
 
 cache_dir = os.path.expanduser("~/.cache/alphacube")
+BASE_URL = "https://github.com/kyo-takano/alphacube/releases/download/assets/"

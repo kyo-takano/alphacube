@@ -6,6 +6,7 @@ to solve Rubik's Cubes directly from the terminal. It parses arguments for
 model selection, scramble input, search parameters, and verbosity, then
 invokes the core solver and prints the result.
 """
+
 import argparse
 
 import rich
